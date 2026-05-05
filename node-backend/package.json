@@ -1,0 +1,28 @@
+{
+  "name": "monox-bot-backend",
+  "version": "1.0.0",
+  "description": "Monox Telegram bot + AI brain",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate --schema=src/db/schema.prisma",
+    "db:push": "prisma db push --schema=src/db/schema.prisma",
+    "db:studio": "prisma studio --schema=src/db/schema.prisma"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@prisma/client": "^5.14.0",
+    "grammy": "^1.22.4",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "prisma": "^5.14.0",
+    "tsx": "^4.15.2",
+    "typescript": "^5.4.5"
+  }
+}
