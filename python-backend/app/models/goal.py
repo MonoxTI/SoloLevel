@@ -20,29 +20,37 @@ class GoalType(str, enum.Enum):
     CUSTOM = "CUSTOM"
 
 
+class Difficulty(str, enum.Enum):
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
+
+
+XP_BY_DIFFICULTY = {
+    Difficulty.EASY: 50,
+    Difficulty.MEDIUM: 150,
+    Difficulty.HARD: 300,
+}
+
+
 class Goal(Base):
     __tablename__ = "goals"
 
-    id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=gen_uuid
-    )
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False
-    )
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=gen_uuid)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     type: Mapped[GoalType] = mapped_column(Enum(GoalType), nullable=False)
+    difficulty: Mapped[Difficulty] = mapped_column(Enum(Difficulty), default=Difficulty.MEDIUM, nullable=False)
     target_value: Mapped[float] = mapped_column(Float, nullable=False)
     current_value: Mapped[float] = mapped_column(Float, default=0.0)
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    xp_reward: Mapped[int] = mapped_column(Integer, default=100)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship back to User
     user: Mapped["User"] = relationship(back_populates="goals")  # type: ignore[name-defined]
+
+    @property
+    def xp_reward(self) -> int:
+        return XP_BY_DIFFICULTY[self.difficulty]
