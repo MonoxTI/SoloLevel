@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.models.models import Goal, GoalType, User
+from app.models import Goal, GoalType, User
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 

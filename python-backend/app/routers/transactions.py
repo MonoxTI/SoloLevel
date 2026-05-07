@@ -7,7 +7,7 @@ from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.models.models import Transaction
+from app.models import Transaction
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 

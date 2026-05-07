@@ -1,0 +1,11 @@
+# Terminal 1 - Python backend
+cd python-backend
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 - Node bot
+cd node-backend
+npm run dev
+
+# Terminal 3 - Dashboard
+cd dashboard
+npm run dev
