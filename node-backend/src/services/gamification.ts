@@ -2,84 +2,72 @@ import { prisma } from "../db/prisma";
 
 const XP_REWARDS = {
   LOG_EXPENSE: 10,
-  SET_GOAL: 25,
-  COMPLETE_GOAL: 100,
-  DAILY_STREAK: 50,
-  UNDER_BUDGET: 75,
+  SET_GOAL:    25,
+  DAILY_BONUS: 50,
 } as const;
 
-const LEVEL_THRESHOLDS = [0, 500, 1500, 3000, 5500, 9000, 14000, 20000];
+// Mirror of the Python XP curve — must stay in sync
+const LEVEL_THRESHOLDS = [
+  0, 500, 2000, 5000, 10000, 17500, 28000,
+  42000, 60000, 82500, 110000, 142500, 180000, 222500, 270000,
+];
+
+const LEVEL_TITLES: Record<number, string> = {
+  1: "Broke Beginner",    2: "Budget Tracker",
+  3: "Saving Starter",    4: "Penny Pincher",
+  5: "Cash Conscious",    6: "Finance Aware",
+  7: "Money Manager",     8: "Wealth Builder",
+  9: "Investment Initiate", 10: "Market Watcher",
+  11: "Portfolio Pro",   12: "Finance Commander",
+  13: "Wealth Strategist", 14: "Capital Master",
+  15: "Solo Level MAX",
+};
 
 function calcLevel(xp: number): number {
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (xp >= LEVEL_THRESHOLDS[i]) return i + 1;
+  let level = 1;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) level = i + 1;
+    else break;
   }
-  return 1;
+  return Math.min(level, LEVEL_THRESHOLDS.length);
 }
 
-export async function awardXP(
-  userId: string,
-  action: keyof typeof XP_REWARDS
-): Promise<{ xpGained: number; newTotal: number; newLevel: number; leveledUp: boolean }> {
-  const xpGained = XP_REWARDS[action];
+function getProgress(xp: number, level: number) {
+  const currentThreshold = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const nextThreshold = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  const levelXp = xp - currentThreshold;
+  const levelRange = nextThreshold - currentThreshold;
+  const pct = levelRange > 0 ? Math.min(100, Math.round((levelXp / levelRange) * 100)) : 100;
+  return { xp_into_level: levelXp, xp_needed_for_next: levelRange, progress_pct: pct };
+}
 
+export async function awardXP(userId: string, action: keyof typeof XP_REWARDS) {
+  const xpGained = XP_REWARDS[action];
   const user = await prisma.user.update({
     where: { id: userId },
-    data: {
-      xp: { increment: xpGained },
-      lastActive: new Date(),
-    },
+    data: { xp: { increment: xpGained }, lastActive: new Date() },
   });
 
   const oldLevel = calcLevel(user.xp - xpGained);
   const newLevel = calcLevel(user.xp);
+  const leveledUp = newLevel > oldLevel;
 
   if (newLevel !== user.level) {
     await prisma.user.update({ where: { id: userId }, data: { level: newLevel } });
   }
 
+  const progress = getProgress(user.xp, newLevel);
+
   return {
     xpGained,
     newTotal: user.xp,
     newLevel,
-    leveledUp: newLevel > oldLevel,
+    levelTitle: LEVEL_TITLES[newLevel] ?? "Legend",
+    leveledUp,
+    progress,
   };
 }
 
-export async function updateStreak(userId: string): Promise<number> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return 0;
-
-  const now = new Date();
-  const lastActive = user.lastActive;
-  const daysSince = lastActive
-    ? Math.floor((now.getTime() - lastActive.getTime()) / 86400000)
-    : 999;
-
-  let newStreak = user.streak;
-  if (daysSince === 1) {
-    newStreak += 1;
-  } else if (daysSince > 1) {
-    newStreak = 1; // reset streak
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { streak: newStreak, lastActive: now },
-  });
-
-  return newStreak;
-}
-
-export function buildXPMessage(result: {
-  xpGained: number;
-  newTotal: number;
-  newLevel: number;
-  leveledUp: boolean;
-}): string {
-  let msg = `+${result.xpGained} XP (total: ${result.newTotal})`;
-  if (result.leveledUp) {
-    msg += ` 🎉 Level up! You're now Level ${result.newLevel}!`;
-  }
-  return msg;
+export function buildXPMessage(result: ReturnType<typeof awardXP> extends Promise<infer T> ? T : never): string {
+  return `+${result.xpGained} XP · Total: ${result.newTotal} (Level ${result.newLevel})`;
 }

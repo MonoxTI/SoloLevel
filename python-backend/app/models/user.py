@@ -31,3 +31,9 @@ class User(Base):
     daily_logs: Mapped[list["DailyGoalLog"]] = relationship(  # type: ignore[name-defined]
         back_populates="user", cascade="all, delete"
     )
+    net_worth: Mapped[list["NetWorthSnapshot"]] = relationship(  # type: ignore[name-defined]
+        back_populates="user", cascade="all, delete"
+    )
+    trades: Mapped[list["PortfolioTrade"]] = relationship(  # type: ignore[name-defined]
+        back_populates="user", cascade="all, delete"
+    )

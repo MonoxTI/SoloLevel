@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import init_db
-import app.models  # noqa: F401 — registers all tables before create_all
+import app.models  # noqa: F401
 
-from app.routers import goals, net_worth, transactions, users, daily_goals
+from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading
 
 
 @asynccontextmanager
@@ -31,6 +31,8 @@ app.include_router(transactions.router)
 app.include_router(goals.router)
 app.include_router(net_worth.router)
 app.include_router(daily_goals.router)
+app.include_router(finance.router)
+app.include_router(trading.router)
 
 
 @app.get("/health")

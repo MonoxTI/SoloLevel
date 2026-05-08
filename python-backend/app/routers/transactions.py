@@ -7,20 +7,19 @@ from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.models import Transaction
+from app.models import Transaction, NetWorthSnapshot
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
-# ── keyword-based auto categorisation ─────────────────────────────────────────
 CATEGORY_RULES: dict[str, list[str]] = {
-    "Groceries":     ["pick n pay", "checkers", "woolworths food", "spar", "shoprite", "food lover"],
+    "Groceries":     ["pick n pay", "checkers", "woolworths", "spar", "shoprite", "food lover"],
     "Transport":     ["uber", "bolt", "gautrain", "shell", "engen", "bp ", "caltex", "sasol"],
     "Dining Out":    ["restaurant", "café", "cafe", "mcdonalds", "kfc", "steers", "nandos", "debonairs"],
     "Subscriptions": ["netflix", "spotify", "showmax", "dstv", "amazon", "apple", "google"],
     "Utilities":     ["eskom", "municipality", "city power", "rand water", "telkom", "vodacom", "mtn"],
-    "Shopping":      ["takealot", "mr price", "edgars", "woolworths", "zara", "h&m"],
+    "Shopping":      ["takealot", "mr price", "edgars", "zara", "h&m"],
     "Health":        ["clicks", "dischem", "pharmacy", "doctor", "dentist", "gym", "virgin active"],
-    "ATM / Cash":    ["atm", "cash withdrawal"],
+    "Income":        ["salary", "freelance", "payment received", "transfer in", "deposit"],
 }
 
 
@@ -32,12 +31,11 @@ def auto_categorise(merchant: str) -> str:
     return "Other"
 
 
-# ── schemas ────────────────────────────────────────────────────────────────────
 class TransactionIn(BaseModel):
     user_id: str
-    amount: float
+    amount: float       # positive = expense, negative = income
     merchant: str
-    category: Optional[str] = None   # if omitted, auto-detected
+    category: Optional[str] = None
     note: Optional[str] = None
     date: Optional[datetime] = None
 
@@ -61,19 +59,28 @@ class SpendingSummary(BaseModel):
     count: int
 
 
-# ── routes ─────────────────────────────────────────────────────────────────────
 @router.post("/", response_model=TransactionOut, status_code=201)
 async def create_transaction(body: TransactionIn, db: AsyncSession = Depends(get_db)):
     category = body.category or auto_categorise(body.merchant)
     tx = Transaction(
-        user_id=body.user_id,
-        amount=body.amount,
-        category=category,
-        merchant=body.merchant,
-        note=body.note,
+        user_id=body.user_id, amount=body.amount, category=category,
+        merchant=body.merchant, note=body.note,
         date=body.date or datetime.now(timezone.utc),
     )
     db.add(tx)
+
+    # Auto-adjust net worth if one is set
+    nw_result = await db.execute(
+        select(NetWorthSnapshot).where(NetWorthSnapshot.user_id == body.user_id)
+    )
+    nw = nw_result.scalar_one_or_none()
+    if nw:
+        # Expenses reduce net worth, income increases it
+        nw.current_value -= body.amount   # positive amount = expense = subtract
+        if body.amount < 0:              # negative amount = income = add to savings
+            nw.saved_this_year += abs(body.amount)
+        nw.last_updated = datetime.utcnow()
+
     await db.commit()
     await db.refresh(tx)
     return tx
@@ -102,7 +109,6 @@ async def spending_summary(
     year: int = Query(default=datetime.now().year),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns per-category totals for a given month."""
     q = (
         select(
             Transaction.category,
