@@ -1,12 +1,9 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.db.database import init_db
 import app.models  # noqa: F401
-
-from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading
+from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading, forex
 
 
 @asynccontextmanager
@@ -33,6 +30,7 @@ app.include_router(net_worth.router)
 app.include_router(daily_goals.router)
 app.include_router(finance.router)
 app.include_router(trading.router)
+app.include_router(forex.router)
 
 
 @app.get("/health")

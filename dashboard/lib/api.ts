@@ -1,4 +1,7 @@
-import type { Goal, GoalType, NetWorth, SpendingSummary, Transaction, User } from "./types";
+import type {
+  Goal, GoalType, Difficulty, Transaction, SpendingSummary,
+  User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
+} from "./types";
 
 const BASE = process.env.PYTHON_API_URL ?? "http://localhost:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
@@ -7,13 +10,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
-    // Don't cache dashboard data — always fresh
     cache: "no-store",
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API error ${res.status}: ${text}`);
-  }
+  if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json();
 }
 
@@ -30,13 +29,9 @@ export async function getGoals(userId = USER_ID, completed?: boolean): Promise<G
 }
 
 export async function createGoal(body: {
-  title: string;
-  type: GoalType;
-  target_value: number;
-  description?: string;
-  deadline?: string;
-  xp_reward?: number;
-  userId?: string;
+  title: string; type: GoalType; difficulty: Difficulty;
+  target_value: number; description?: string;
+  deadline?: string; userId?: string;
 }): Promise<Goal> {
   return apiFetch("/goals/", {
     method: "POST",
@@ -60,14 +55,12 @@ export async function deleteGoal(goalId: string) {
 }
 
 // ── Transactions ──────────────────────────────────────────────────────────────
-export async function getTransactions(userId = USER_ID, limit = 20): Promise<Transaction[]> {
+export async function getTransactions(userId = USER_ID, limit = 30): Promise<Transaction[]> {
   return apiFetch(`/transactions/?user_id=${userId}&limit=${limit}`);
 }
 
 export async function getSpendingSummary(
-  userId = USER_ID,
-  month?: number,
-  year?: number
+  userId = USER_ID, month?: number, year?: number
 ): Promise<SpendingSummary[]> {
   const now = new Date();
   const params = new URLSearchParams({
@@ -78,20 +71,33 @@ export async function getSpendingSummary(
   return apiFetch(`/transactions/summary?${params}`);
 }
 
-export async function logTransaction(body: {
-  amount: number;
-  merchant: string;
-  category?: string;
-  note?: string;
-  userId?: string;
-}): Promise<Transaction> {
-  return apiFetch("/transactions/", {
+// ── Net Worth ─────────────────────────────────────────────────────────────────
+export async function getNetWorth(userId = USER_ID): Promise<NetWorth> {
+  return apiFetch(`/finance/net-worth/${userId}`);
+}
+
+export async function setNetWorth(userId = USER_ID, baseValue: number, yearlyGoal = 10000): Promise<NetWorth> {
+  return apiFetch("/finance/net-worth", {
     method: "POST",
-    body: JSON.stringify({ user_id: body.userId ?? USER_ID, ...body }),
+    body: JSON.stringify({ user_id: userId, base_value: baseValue, yearly_budget_goal: yearlyGoal }),
   });
 }
 
-// ── Net Worth ─────────────────────────────────────────────────────────────────
-export async function getNetWorth(cashBalance: number, userId = USER_ID): Promise<NetWorth> {
-  return apiFetch(`/net-worth/?user_id=${userId}&cash_balance=${cashBalance}`);
+// ── Daily Goals ───────────────────────────────────────────────────────────────
+export async function getDailyStatus(userId = USER_ID): Promise<DailyStatus> {
+  return apiFetch(`/daily-goals/today?user_id=${userId}`);
+}
+
+// ── Portfolio ─────────────────────────────────────────────────────────────────
+export async function getPortfolio(userId = USER_ID): Promise<PortfolioSummary> {
+  return apiFetch(`/finance/trades/${userId}`);
+}
+
+// ── Trading Signals ───────────────────────────────────────────────────────────
+export async function getTradingSignals(): Promise<TradingSignal[]> {
+  return apiFetch("/trading/scan");
+}
+
+export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
+  return apiFetch(`/trading/signal/${symbol}`);
 }

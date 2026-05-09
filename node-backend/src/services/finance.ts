@@ -3,6 +3,7 @@ import { config } from "../config";
 
 const api = axios.create({ baseURL: config.pythonApiUrl });
 
+// ── Transactions ──────────────────────────────────────────────────────────────
 export async function logTransaction(params: {
   userId: string; amount: number; merchant: string; category?: string; note?: string;
 }) {
@@ -13,6 +14,27 @@ export async function logTransaction(params: {
   return data;
 }
 
+export async function logIncome(params: {
+  userId: string; amount: number; merchant: string;
+}) {
+  const { data } = await api.post("/transactions/", {
+    user_id: params.userId,
+    amount: -Math.abs(params.amount),
+    merchant: params.merchant,
+    category: "Income",
+  });
+  return data;
+}
+
+export async function getSpendingSummary(userId: string) {
+  const now = new Date();
+  const { data } = await api.get("/transactions/summary", {
+    params: { user_id: userId, month: now.getMonth() + 1, year: now.getFullYear() },
+  });
+  return data;
+}
+
+// ── Goals ─────────────────────────────────────────────────────────────────────
 export async function getGoals(userId: string, completed?: boolean) {
   const params: Record<string, string> = { user_id: userId };
   if (completed !== undefined) params.completed = String(completed);
@@ -32,14 +54,7 @@ export async function createGoal(params: {
   return data;
 }
 
-export async function getSpendingSummary(userId: string) {
-  const now = new Date();
-  const { data } = await api.get("/transactions/summary", {
-    params: { user_id: userId, month: now.getMonth() + 1, year: now.getFullYear() },
-  });
-  return data;
-}
-
+// ── Daily Goals ───────────────────────────────────────────────────────────────
 export async function getDailyStatus(userId: string) {
   const { data } = await api.get("/daily-goals/today", { params: { user_id: userId } });
   return data;
@@ -52,27 +67,7 @@ export async function completeDailyGoal(userId: string, goalKey: string) {
   return data;
 }
 
-export async function setNetWorth(userId: string, baseValue: number, yearlyGoal?: number) {
-  const { data } = await api.post("/finance/net-worth", {
-    user_id: userId,
-    base_value: baseValue,
-    yearly_budget_goal: yearlyGoal ?? 10000,
-  });
-  return data;
-}
-
-export async function getNetWorth(userId: string) {
-  const { data } = await api.get(`/finance/net-worth/${userId}`);
-  return data;
-}
-
-export async function getPortfolio(userId: string) {
-  const { data } = await api.get(`/finance/trades/${userId}`);
-  return data;
-}
-
-
-// ── Net Worth ──────────────────────────────────────────────────────────────────
+// ── Net Worth ─────────────────────────────────────────────────────────────────
 export async function setNetWorth(params: {
   userId: string; baseValue: number; yearlyBudgetGoal?: number;
 }) {
@@ -86,19 +81,6 @@ export async function setNetWorth(params: {
 
 export async function getNetWorth(userId: string) {
   const { data } = await api.get(`/finance/net-worth/${userId}`);
-  return data;
-}
-
-export async function logIncome(params: {
-  userId: string; amount: number; merchant: string;
-}) {
-  // Income = negative amount (reduces expenses, increases net worth)
-  const { data } = await api.post("/transactions/", {
-    user_id: params.userId,
-    amount: -Math.abs(params.amount),
-    merchant: params.merchant,
-    category: "Income",
-  });
   return data;
 }
 
