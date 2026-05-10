@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getUser } from "@/lib/api";
 
 const NAV = [
-  { href: "/",  label: "Overview",  icon: "◈" },
+  { href: "/dashboard/overview",  label: "Overview",  icon: "◈" },
   { href: "/dashboard/goals",     label: "Goals",     icon: "◎" },
   { href: "/dashboard/spending",  label: "Spending",  icon: "◱" },
   { href: "/dashboard/trading",   label: "Trading",   icon: "◬" },
