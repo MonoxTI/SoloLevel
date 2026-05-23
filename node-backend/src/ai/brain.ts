@@ -28,138 +28,205 @@ export interface ParsedMessage {
   replyText: string;
 }
 
-const DAILY_KEYS: Record<string, string> = {
-  "read": "read_book", "book": "read_book",
-  "gym": "gym", "workout": "gym", "exercise": "gym",
-  "code": "practice_code", "coding": "practice_code", "programming": "practice_code",
-  "maths": "practice_maths", "math": "practice_maths",
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DIFFICULTY_KEYS: Record<string, "EASY" | "MEDIUM" | "HARD"> = {
-  easy: "EASY", simple: "EASY", small: "EASY",
-  medium: "MEDIUM", normal: "MEDIUM",
-  hard: "HARD", difficult: "HARD", epic: "HARD",
-};
-
-const CATEGORY_MAP: Record<string, string> = {
-  "woolworths": "Groceries", "pick n pay": "Groceries", "checkers": "Groceries",
-  "spar": "Groceries", "shoprite": "Groceries",
-  "uber": "Transport", "bolt": "Transport", "gautrain": "Transport",
-  "shell": "Transport", "engen": "Transport",
-  "kfc": "Dining Out", "mcdonalds": "Dining Out", "steers": "Dining Out",
-  "nandos": "Dining Out", "restaurant": "Dining Out",
-  "netflix": "Subscriptions", "spotify": "Subscriptions", "dstv": "Subscriptions",
-  "clicks": "Health", "dischem": "Health",
-  "takealot": "Shopping", "mr price": "Shopping",
-  "salary": "Income", "deposit": "Income", "freelance": "Income",
-};
+function parseAmount(text: string): number | undefined {
+  const clean = text.replace(/\s+/g, " ");
+  const match = clean.match(/[Rr]\s?(\d[\d,. ]*\d|\d)/);
+  if (match) return parseFloat(match[1].replace(/[, ]/g, ""));
+  const plain = clean.match(/^(\d+(?:\.\d+)?)/);
+  if (plain) return parseFloat(plain[1]);
+  return undefined;
+}
 
 function detectCategory(merchant: string): string {
   const m = merchant.toLowerCase();
-  for (const [kw, cat] of Object.entries(CATEGORY_MAP)) {
-    if (m.includes(kw)) return cat;
+  const rules: [string[], string][] = [
+    [["woolworths", "pick n pay", "checkers", "spar", "shoprite", "food lover", "freshstop"], "Groceries"],
+    [["uber", "bolt", "gautrain", "shell", "engen", "bp", "caltex", "sasol", "total"], "Transport"],
+    [["restaurant", "café", "cafe", "mcdonalds", "kfc", "steers", "nandos", "debonairs", "burger", "pizza"], "Dining Out"],
+    [["netflix", "spotify", "showmax", "dstv", "amazon", "apple", "google", "microsoft"], "Subscriptions"],
+    [["eskom", "municipality", "city power", "rand water", "telkom", "vodacom", "mtn", "cell c"], "Utilities"],
+    [["takealot", "mr price", "edgars", "zara", "h&m", "cotton on"], "Shopping"],
+    [["clicks", "dischem", "pharmacy", "doctor", "dentist", "gym", "virgin active", "planet fitness"], "Health"],
+    [["salary", "freelance", "payment", "deposit", "transfer"], "Income"],
+  ];
+  for (const [keywords, cat] of rules) {
+    if (keywords.some(kw => m.includes(kw))) return cat;
   }
   return "Other";
 }
 
-function parseAmount(text: string): number | undefined {
-  const match = text.replace(/\s/g, "").match(/[Rr]?(\d+(?:[.,]\d+)?)/);
-  if (!match) return undefined;
-  return parseFloat(match[1].replace(",", "."));
+const DAILY_KEYS: [string[], string][] = [
+  [["read", "book", "reading"], "read_book"],
+  [["gym", "workout", "exercise", "train", "training"], "gym"],
+  [["code", "coding", "programming", "dev", "develop"], "practice_code"],
+  [["maths", "math", "mathematics"], "practice_maths"],
+];
+
+function parseDailyKey(text: string): string | undefined {
+  const lower = text.toLowerCase();
+  for (const [keywords, key] of DAILY_KEYS) {
+    if (keywords.some(kw => lower.includes(kw))) return key;
+  }
+  return undefined;
 }
 
-export function parseMessage(text: string): ParsedMessage {
-  const lower = text.toLowerCase().trim();
-  const words = lower.split(/\s+/);
+const DIFFICULTY_WORDS: Record<string, "EASY" | "MEDIUM" | "HARD"> = {
+  easy: "EASY", simple: "EASY", small: "EASY", light: "EASY",
+  medium: "MEDIUM", normal: "MEDIUM", moderate: "MEDIUM", mid: "MEDIUM",
+  hard: "HARD", difficult: "HARD", epic: "HARD", big: "HARD",
+};
 
-  // ── DAILY STATUS
-  if (lower === "daily" || lower === "today" || lower.includes("today's goals")) {
+function parseDifficulty(text: string): "EASY" | "MEDIUM" | "HARD" {
+  const lower = text.toLowerCase();
+  for (const [word, diff] of Object.entries(DIFFICULTY_WORDS)) {
+    if (new RegExp(`\\b${word}\\b`).test(lower)) return diff;
+  }
+  return "MEDIUM";
+}
+
+const MONTHS: Record<string, number> = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+  jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8,
+  sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+};
+
+function parseDeadline(text: string): string | undefined {
+  const lower = text.toLowerCase();
+  for (const [name, num] of Object.entries(MONTHS)) {
+    if (lower.includes(name)) {
+      const now   = new Date();
+      const year  = num <= now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear();
+      return `${year}-${String(num).padStart(2, "0")}-28`;
+    }
+  }
+  return undefined;
+}
+
+// ── Main parser ────────────────────────────────────────────────────────────────
+
+export function parseMessage(text: string): ParsedMessage {
+  const raw   = text.trim();
+  const lower = raw.toLowerCase().replace(/\s+/g, " ");
+
+  // ── Help ──────────────────────────────────────────────────────────────────
+  if (["/start", "/help", "help", "commands", "?"].includes(lower)) {
+    return { intent: "HELP", replyText: "" };
+  }
+
+  // ── Goals shortcuts ───────────────────────────────────────────────────────
+  if (["/goals", "show goals", "my goals", "goals", "view goals", "list goals", "show my goals"].includes(lower)) {
+    return { intent: "QUERY_GOALS", replyText: "" };
+  }
+
+  // ── Spending shortcuts ────────────────────────────────────────────────────
+  if (["/spending", "spending", "budget", "how am i doing", "summary", "my spending", "show spending"].includes(lower)) {
+    return { intent: "QUERY_SPENDING", replyText: "" };
+  }
+
+  // ── Daily status ──────────────────────────────────────────────────────────
+  if (["daily", "today", "today's goals", "/daily", "daily goals", "show daily"].includes(lower)) {
     return { intent: "DAILY_STATUS", replyText: "" };
   }
 
-  // ── DAILY COMPLETE
-  const doneWords = ["done", "did", "finished", "completed"];
-  if (doneWords.some(w => lower.startsWith(w))) {
-    for (const [kw, key] of Object.entries(DAILY_KEYS)) {
-      if (lower.includes(kw)) {
-        return { intent: "DAILY_COMPLETE", dailyGoalKey: key, replyText: "" };
-      }
-    }
+  // ── Daily complete — "done gym", "finished reading", "did code" ──────────
+  if (/^(done|did|finished|completed|complete)\s+\S+/i.test(raw)) {
+    const key = parseDailyKey(raw);
+    if (key) return { intent: "DAILY_COMPLETE", dailyGoalKey: key, replyText: "" };
   }
 
-  // ── SET NET WORTH — "set net worth R50000" / "my net worth is R50000"
-  if ((lower.includes("set") || lower.includes("my")) && lower.includes("net worth") ||
-      lower.includes("set worth") || lower.startsWith("worth")) {
-    const amount = parseAmount(text);
-    return { intent: "SET_NET_WORTH", amount, replyText: "" };
+  // ── Trading signals ───────────────────────────────────────────────────────
+  if (["signals", "scan", "scan market", "trade signals", "forex", "forex signals"].includes(lower)) {
+    return { intent: "QUERY_SIGNALS", replyText: "" };
+  }
+  // "check EURUSD" or "check NPN.JO"
+  const checkMatch = raw.match(/^check\s+([A-Za-z0-9.]+)$/i);
+  if (checkMatch) {
+    return { intent: "QUERY_SIGNALS", symbol: checkMatch[1].toUpperCase(), replyText: "" };
   }
 
-  // ── QUERY NET WORTH — "net worth" / "what is my net worth"
-  if (lower.includes("net worth") || lower.includes("my worth")) {
+  // ── Net worth ─────────────────────────────────────────────────────────────
+  if (/net\s*worth/i.test(lower) && /set|update|change|is/i.test(lower)) {
+    return { intent: "SET_NET_WORTH", amount: parseAmount(raw), replyText: "" };
+  }
+  if (/net\s*worth/i.test(lower) || lower === "worth" || lower === "my worth") {
     return { intent: "QUERY_NET_WORTH", replyText: "" };
   }
 
-  // ── TRADING SIGNALS — "signals" / "scan market" / "check NPN.JO"
-  if (lower.includes("signal") || lower.includes("scan") || lower.includes("trade alert")
-      || lower.includes("check stock") || lower.match(/[a-z]+\.jo/)) {
-    const symbolMatch = text.match(/([A-Z]+\.JO)/i);
+  // ── Log income ────────────────────────────────────────────────────────────
+  // "income R5000 salary", "received R3000 freelance", "salary R15000"
+  if (/^(income|received|salary|earned|deposit|paid in)\b/i.test(raw)) {
+    const amount      = parseAmount(raw);
+    const afterCmd    = raw.replace(/^(income|received|salary|earned|deposit|paid in)\s*/i, "");
+    const afterAmount = afterCmd.replace(/[Rr]\s?\d[\d,. ]*/g, "").trim();
+    const merchant    = afterAmount || "Income";
+    return { intent: "LOG_INCOME", amount, merchant, category: "Income", replyText: "" };
+  }
+
+  // ── Log expense ───────────────────────────────────────────────────────────
+  // "log R250 Woolworths", "spent R150 Uber", "paid R500 doctor"
+  if (/^(log|spent|spend|paid|bought|purchased)\b/i.test(raw)) {
+    const amount      = parseAmount(raw);
+    const afterCmd    = raw.replace(/^(log|spent|spend|paid|bought|purchased)\s*/i, "");
+    const afterAmount = afterCmd.replace(/[Rr]\s?\d[\d,. ]*/g, "").trim();
+    const merchant    = afterAmount || "Unknown";
     return {
-      intent: "QUERY_SIGNALS",
-      symbol: symbolMatch ? symbolMatch[1].toUpperCase() : undefined,
+      intent:   "LOG_EXPENSE",
+      amount,
+      merchant,
+      category: detectCategory(merchant),
       replyText: "",
     };
   }
 
-  // ── LOG INCOME — "income R5000 salary" / "received R3000"
-  const incomeWords = ["income", "received", "salary", "paid in", "deposit", "earned"];
-  if (incomeWords.some(w => lower.includes(w))) {
-    const amount = parseAmount(text);
-    const merchantMatch = text.match(/[Rr]?\d[\d\s,.]* (.+)$/);
-    const merchant = merchantMatch ? merchantMatch[1].trim() : "Income";
-    return { intent: "LOG_INCOME", amount, merchant, category: "Income", replyText: "" };
-  }
+  // ── Set goal ──────────────────────────────────────────────────────────────
+  // "save R10000 hard by December", "goal R5000 easy", "target R2000 medium"
+  if (/^(save|goal|set goal|target|achieve|reach)\b/i.test(raw)) {
+    const amount     = parseAmount(raw);
+    const difficulty = parseDifficulty(raw);
+    const deadline   = parseDeadline(raw);
 
-  // ── LOG EXPENSE
-  const logWords = ["log", "spent", "spend", "paid", "bought"];
-  if (logWords.some(w => lower.startsWith(w))) {
-    const amount = parseAmount(text);
-    const merchantMatch = text.match(/[Rr]?\d[\d\s,.]* (.+)$/);
-    const merchant = merchantMatch ? merchantMatch[1].trim() : "Unknown";
+    let goalType = "SAVINGS";
+    if (/spend|budget/i.test(lower))       goalType = "SPENDING_LIMIT";
+    else if (/worth/i.test(lower))         goalType = "NET_WORTH";
+    else if (/trade|stock|invest/i.test(lower)) goalType = "TRADE_TARGET";
+
+    const title = raw
+      .replace(/^(save|goal|set goal|target|achieve|reach)\s*/i, "")
+      .replace(/[Rr]\s?\d[\d,. ]*/g, "")
+      .replace(/\b(easy|medium|hard|difficult|simple|epic|big|small)\b/gi, "")
+      .replace(/\bby\s+\w+/gi, "")
+      .trim() || `Save R${amount ?? ""}`;
+
     return {
-      intent: "LOG_EXPENSE", amount, merchant,
-      category: detectCategory(merchant), replyText: "",
+      intent:         "SET_GOAL",
+      goalTitle:      title || `Savings goal`,
+      goalType,
+      goalDifficulty: difficulty,
+      goalTarget:     amount,
+      goalDeadline:   deadline,
+      replyText:      "",
     };
   }
 
-  // ── SET GOAL
-  const goalWords = ["save", "goal", "target", "achieve"];
-  if (goalWords.some(w => lower.includes(w))) {
-    const amount = parseAmount(text);
-    const difficulty = words.reduce<"EASY" | "MEDIUM" | "HARD" | undefined>(
-      (found, w) => found ?? DIFFICULTY_KEYS[w], undefined
-    ) ?? "MEDIUM";
-    let goalType = "CUSTOM";
-    if (lower.includes("save") || lower.includes("saving")) goalType = "SAVINGS";
-    else if (lower.includes("spend")) goalType = "SPENDING_LIMIT";
-    else if (lower.includes("worth")) goalType = "NET_WORTH";
-    else if (lower.includes("trade")) goalType = "TRADE_TARGET";
-    const months = ["january","february","march","april","may","june",
-                    "july","august","september","october","november","december"];
-    const foundMonth = months.find(m => lower.includes(m));
-    let deadline: string | undefined;
-    if (foundMonth) {
-      const year = new Date().getFullYear();
-      deadline = `${year}-${String(months.indexOf(foundMonth) + 1).padStart(2,"0")}-28`;
-    }
-    const titleMatch = text.match(/(?:save|goal|target)\s+(?:[Rr]?\d[\d\s,.]*\s+)?(.+?)(?:\s+by\s+\w+)?$/i);
-    const title = titleMatch?.[1]?.trim() || text.replace(/[Rr]?\d+/g,"").trim() || "New Goal";
-    return { intent: "SET_GOAL", goalTitle: title, goalType, goalDifficulty: difficulty, goalTarget: amount, goalDeadline: deadline, replyText: "" };
+  // ── Fuzzy fallbacks ───────────────────────────────────────────────────────
+  if (lower.includes("goal") || lower.includes("progress")) {
+    return { intent: "QUERY_GOALS", replyText: "" };
+  }
+  if (lower.includes("spend") || lower.includes("budget") || lower.includes("how am i")) {
+    return { intent: "QUERY_SPENDING", replyText: "" };
+  }
+  if (lower.includes("signal") || lower.includes("trade") || lower.includes("forex")) {
+    return { intent: "QUERY_SIGNALS", replyText: "" };
+  }
+  if (lower.includes("net worth") || lower.includes("networth")) {
+    return { intent: "QUERY_NET_WORTH", replyText: "" };
   }
 
-  // ── QUERIES
-  if (lower.includes("goal") || lower.includes("progress")) return { intent: "QUERY_GOALS", replyText: "" };
-  if (lower.includes("spending") || lower.includes("budget") || lower.includes("how am i doing")) return { intent: "QUERY_SPENDING", replyText: "" };
-  if (lower === "help" || lower === "/help") return { intent: "HELP", replyText: "" };
-
-  return { intent: "UNKNOWN", replyText: "Type *help* to see what I can do." };
+  return {
+    intent:    "UNKNOWN",
+    replyText: "I didn't catch that. Type *help* to see all commands.",
+  };
 }

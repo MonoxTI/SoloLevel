@@ -33,7 +33,7 @@ def auto_categorise(merchant: str) -> str:
 
 class TransactionIn(BaseModel):
     user_id: str
-    amount: float       # positive = expense, negative = income
+    amount: float       # positive = income, negative = expense
     merchant: str
     category: Optional[str] = None
     note: Optional[str] = None
@@ -62,10 +62,21 @@ class SpendingSummary(BaseModel):
 @router.post("/", response_model=TransactionOut, status_code=201)
 async def create_transaction(body: TransactionIn, db: AsyncSession = Depends(get_db)):
     category = body.category or auto_categorise(body.merchant)
+
+    # Strip timezone info — DB column is TIMESTAMP WITHOUT TIME ZONE
+    tx_date = body.date
+    if tx_date is not None:
+        tx_date = tx_date.replace(tzinfo=None)
+    else:
+        tx_date = datetime.utcnow()
+
     tx = Transaction(
-        user_id=body.user_id, amount=body.amount, category=category,
-        merchant=body.merchant, note=body.note,
-        date=body.date or datetime.now(timezone.utc),
+        user_id=body.user_id,
+        amount=body.amount,
+        category=category,
+        merchant=body.merchant,
+        note=body.note,
+        date=tx_date,
     )
     db.add(tx)
 
@@ -75,11 +86,10 @@ async def create_transaction(body: TransactionIn, db: AsyncSession = Depends(get
     )
     nw = nw_result.scalar_one_or_none()
     if nw:
-        # Expenses reduce net worth, income increases it
-        nw.current_value -= body.amount   # positive amount = expense = subtract
-        if body.amount < 0:              # negative amount = income = add to savings
-            nw.saved_this_year += abs(body.amount)
-        nw.last_updated = datetime.utcnow()
+        nw.current_value -= body.amount        # ← inside ✅
+        if body.amount < 0:                    # ← inside ✅
+            nw.saved_this_year += abs(body.amount)  # ← inside ✅
+        nw.last_updated = datetime.utcnow()    # ← inside ✅
 
     await db.commit()
     await db.refresh(tx)

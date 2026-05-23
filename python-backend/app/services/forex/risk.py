@@ -78,7 +78,7 @@ def calculate_position_size(
     lot_size = risk_amount / (sl_pips * pip_value)
 
     # Clamp between 0.01 (micro) and 1.0 (standard)
-    return round(max(0.01, min(1.0, lot_size)), 2)
+    return round(max(0.01, min(0.01, lot_size)), 2)
 
 
 def calculate_sl_tp(

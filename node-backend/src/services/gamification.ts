@@ -6,7 +6,6 @@ const XP_REWARDS = {
   DAILY_BONUS: 50,
 } as const;
 
-// Mirror of the Python XP curve — must stay in sync
 const LEVEL_THRESHOLDS = [
   0, 500, 2000, 5000, 10000, 17500, 28000,
   42000, 60000, 82500, 110000, 142500, 180000, 222500, 270000,
@@ -34,8 +33,8 @@ function calcLevel(xp: number): number {
 
 function getProgress(xp: number, level: number) {
   const currentThreshold = LEVEL_THRESHOLDS[level - 1] ?? 0;
-  const nextThreshold = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-  const levelXp = xp - currentThreshold;
+  const nextThreshold    = LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  const levelXp    = xp - currentThreshold;
   const levelRange = nextThreshold - currentThreshold;
   const pct = levelRange > 0 ? Math.min(100, Math.round((levelXp / levelRange) * 100)) : 100;
   return { xp_into_level: levelXp, xp_needed_for_next: levelRange, progress_pct: pct };
@@ -43,9 +42,12 @@ function getProgress(xp: number, level: number) {
 
 export async function awardXP(userId: string, action: keyof typeof XP_REWARDS) {
   const xpGained = XP_REWARDS[action];
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data: { xp: { increment: xpGained }, lastActive: new Date() },
+
+  // Upsert — create user if they don't exist in Prisma yet
+  const user = await prisma.user.upsert({
+    where:  { id: userId },
+    create: { id: userId, name: "Itu", xp: xpGained, level: 1, streak: 0, lastActive: new Date() },
+    update: { xp: { increment: xpGained }, lastActive: new Date() },
   });
 
   const oldLevel = calcLevel(user.xp - xpGained);
@@ -60,7 +62,7 @@ export async function awardXP(userId: string, action: keyof typeof XP_REWARDS) {
 
   return {
     xpGained,
-    newTotal: user.xp,
+    newTotal:   user.xp,
     newLevel,
     levelTitle: LEVEL_TITLES[newLevel] ?? "Legend",
     leveledUp,
@@ -68,6 +70,11 @@ export async function awardXP(userId: string, action: keyof typeof XP_REWARDS) {
   };
 }
 
-export function buildXPMessage(result: ReturnType<typeof awardXP> extends Promise<infer T> ? T : never): string {
-  return `+${result.xpGained} XP · Total: ${result.newTotal} (Level ${result.newLevel})`;
+export function buildXPMessage(result: {
+  xpGained: number;
+  newTotal: number;
+  newLevel: number;
+  levelTitle: string;
+}): string {
+  return `+${result.xpGained} XP · Total: ${result.newTotal} (Level ${result.newLevel} — ${result.levelTitle})`;
 }

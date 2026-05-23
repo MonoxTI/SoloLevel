@@ -8,8 +8,11 @@ export async function logTransaction(params: {
   userId: string; amount: number; merchant: string; category?: string; note?: string;
 }) {
   const { data } = await api.post("/transactions/", {
-    user_id: params.userId, amount: params.amount,
-    merchant: params.merchant, category: params.category, note: params.note,
+    user_id: params.userId,
+    amount: -Math.abs(params.amount),  // positive = expense
+    merchant: params.merchant,
+    category: params.category,
+    note: params.note,
   });
   return data;
 }
@@ -19,7 +22,7 @@ export async function logIncome(params: {
 }) {
   const { data } = await api.post("/transactions/", {
     user_id: params.userId,
-    amount: -Math.abs(params.amount),
+    amount: Math.abs(params.amount),  // negative = income
     merchant: params.merchant,
     category: "Income",
   });

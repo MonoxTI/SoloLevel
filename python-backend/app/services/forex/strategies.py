@@ -42,9 +42,9 @@ def strategy_ema_crossover(df: pd.DataFrame) -> dict:
     SELL when fast crosses below slow.
     """
     close = df["Close"]
-    ema9  = calc_ema(close, 9)
-    ema21 = calc_ema(close, 21)
-    ema50 = calc_ema(close, 50)
+    ema9  = calc_ema(close, 20)
+    ema21 = calc_ema(close, 50)
+    ema50 = calc_ema(close, 200)
 
     curr_fast, prev_fast = ema9.iloc[-1], ema9.iloc[-2]
     curr_slow, prev_slow = ema21.iloc[-1], ema21.iloc[-2]
