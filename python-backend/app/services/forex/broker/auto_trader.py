@@ -7,8 +7,8 @@ import logging
 from datetime import datetime, date
 from typing import Optional
 
-from app.services.forex.engine import analyse_pair, DEFAULT_PAIRS
-from app.services.forex.risk import RiskConfig, validate_trade, TradeSetup, calculate_sl_tp, calculate_position_size
+from app.services.forex.v2.engine import analyse_pair_v2 as analyse_pair, DEFAULT_PAIRS
+from app.services.forex.v2.risk import RiskConfig, validate_trade, TradeSetup, calculate_sl_tp, calculate_position_size
 from app.services.forex.broker.mt5_client import MT5Client, MT5Config
 
 logger = logging.getLogger(__name__)
@@ -144,7 +144,7 @@ class AutoTrader:
             lot_size=lot_size,
             stop_loss=sl,
             take_profit=tp,
-            comment=f"MonoxBot·{analysis['signal']}·{analysis['final_confidence']:.0%}",
+            comment=f"MonoxBot·{analysis['signal']}·{analysis['confidence']:.0%}",
         )
 
         if ok:
@@ -160,7 +160,7 @@ class AutoTrader:
                 f"SL: {sl}  ·  TP: {tp}\n"
                 f"Lots: {lot_size}  ·  Risk: R{trade_setup['risk_amount']}\n"
                 f"Strategies: {strategies}\n"
-                f"Confidence: {analysis['final_confidence']:.0%}"
+                f"Confidence: {analysis['confidence']:.0%}"
             )
             self.trade_log.append({**result, "symbol": symbol, "analysed_at": datetime.utcnow().isoformat()})
             return result

@@ -86,10 +86,11 @@ async def create_transaction(body: TransactionIn, db: AsyncSession = Depends(get
     )
     nw = nw_result.scalar_one_or_none()
     if nw:
-        nw.current_value -= body.amount        # ← inside ✅
-        if body.amount < 0:                    # ← inside ✅
-            nw.saved_this_year += abs(body.amount)  # ← inside ✅
-        nw.last_updated = datetime.utcnow()    # ← inside ✅
+        # positive = income → NW up, negative = expense → NW down
+        nw.current_value += body.amount
+        if body.amount > 0:  # only income counts toward yearly savings
+            nw.saved_this_year += body.amount
+        nw.last_updated = datetime.utcnow()
 
     await db.commit()
     await db.refresh(tx)

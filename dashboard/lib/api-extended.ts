@@ -43,6 +43,21 @@ export async function getPortfolioSummary(userId = USER_ID) {
   }>(`/finance/trades/${userId}`);
 }
 
+export async function getInsights(userId = USER_ID) {
+  return apiFetch<Array<{
+    id: string;
+    type: string;
+    severity: string;
+    category: string | null;
+    title: string;
+    body: string;
+    value: number | null;
+    confidence: number | null;
+    read: boolean;
+    generated_at: string;
+  }>>(`/insights?user_id=${userId}&unread_only=false&limit=10`);
+}
+
 export async function getTradingSignals() {
   return apiFetch<Array<{
     symbol: string;

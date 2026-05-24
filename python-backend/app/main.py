@@ -11,6 +11,7 @@ import app.models  # noqa: F401
 from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading, forex, insights
 from app.services.forex.scheduler import setup_trader, start_scheduler
 from app.services.ml.scheduler import add_ml_jobs
+from app.services.miss_scheduler import add_miss_penalty_job
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,9 @@ async def lifespan(app: FastAPI):
             scheduler = AsyncIOScheduler(timezone="Africa/Johannesburg")
             start_scheduler(trader)
             add_ml_jobs(scheduler)
+            add_miss_penalty_job(scheduler)
             scheduler.start()
-            print(f"✅ MT5 auto trader + ML scheduler started")
+            print(f"✅ MT5 auto trader + ML scheduler + miss-penalty job started")
         else:
             print(f"⚠️  MT5 not connected: {msg}")
     else:
@@ -50,8 +52,9 @@ async def lifespan(app: FastAPI):
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
         scheduler = AsyncIOScheduler(timezone="Africa/Johannesburg")
         add_ml_jobs(scheduler)
+        add_miss_penalty_job(scheduler)
         scheduler.start()
-        print("ℹ️  MT5 not configured — paper mode. ML scheduler running.")
+        print("ℹ️  MT5 not configured — paper mode. ML + miss-penalty schedulers running.")
 
     yield
 

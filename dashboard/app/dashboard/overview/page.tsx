@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getUser, getGoals, getSpendingSummary } from "@/lib/api";
-import { getNetWorthLive, getDailyStatus, getPortfolioSummary } from "@/lib/api-extended";
+import { getNetWorthLive, getDailyStatus, getPortfolioSummary, getInsights } from "@/lib/api-extended";
 import { XPBar } from "@/components/dashboard/XPBar";
 import { StatGrid } from "@/components/dashboard/StatGrid";
 import { GoalCardCompact } from "@/components/dashboard/GoalCard";
 import { SpendingPanel } from "@/components/dashboard/SpendingPanel";
 import { AlertPanel } from "@/components/dashboard/AlertPanel";
 import { DailyGoalsPanel } from "@/components/dashboard/DailyGoalsPanel";
+import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +16,24 @@ const FALLBACK_USER = {
   last_active: null, created_at: "",
 };
 
+const DEFAULT_USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
+
 export default async function OverviewPage() {
-  const [user, goals, summary, netWorth, dailyStatus, portfolio] = await Promise.all([
+  const [user, goals, summary, netWorth, dailyStatus, portfolio, insights] = await Promise.all([
     getUser().catch(() => FALLBACK_USER),
     getGoals(undefined, false).catch(() => []),
     getSpendingSummary().catch(() => []),
     getNetWorthLive().catch(() => null),
     getDailyStatus().catch(() => null),
     getPortfolioSummary().catch(() => null),
+    getInsights().catch(() => []),
   ]);
 
-  const totalSpent = summary.reduce((s: number, r: any) => s + r.total, 0);
+  // Expenses are negative amounts — abs gives the display value
+  const totalSpent = Math.abs(summary.reduce((s: number, r: any) => {
+    const t = r.total ?? 0;
+    return s + (t < 0 ? t : 0); // only count expense categories
+  }, 0));
   const activeGoals = goals.slice(0, 3);
 
   return (
@@ -67,7 +75,7 @@ export default async function OverviewPage() {
         <div className="bg-bg-2 border border-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] uppercase tracking-widest text-ink-2">Active Goals</h2>
-            <Link href="/dashboard/goals" className="text-[10px] text-cyan hover:text-cyan-dim transition-colors">
+            <Link href="/goals" className="text-[10px] text-cyan hover:text-cyan-dim transition-colors">
               view all →
             </Link>
           </div>
@@ -75,7 +83,7 @@ export default async function OverviewPage() {
             <div className="text-center py-6">
               <p className="text-ink-2 text-xs mb-3">No active goals yet.</p>
               <Link
-                href="/dashboard/goals"
+                href="/goals"
                 className="text-[11px] px-4 py-2 rounded bg-cyan-muted border border-cyan/30
                            text-cyan hover:bg-cyan/10 transition-colors"
               >
@@ -89,7 +97,7 @@ export default async function OverviewPage() {
               ))}
               {goals.length > 3 && (
                 <Link
-                  href="/dashboard/goals"
+                  href="/goals"
                   className="block text-center text-[10px] text-ink-2 hover:text-cyan transition-colors pt-1"
                 >
                   +{goals.length - 3} more goals →
@@ -115,6 +123,9 @@ export default async function OverviewPage() {
         )}
         <AlertPanel goals={goals} summary={summary} />
       </div>
+
+      {/* ML Insights — only renders when there's data, graceful empty state otherwise */}
+      <InsightsPanel insights={insights} userId={DEFAULT_USER_ID} />
 
       {/* Net worth budget progress */}
       {netWorth && (
