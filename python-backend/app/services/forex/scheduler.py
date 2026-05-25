@@ -9,14 +9,14 @@ Schedule (SAST / Africa/Johannesburg):
   17:30 Mon-Fri  — daily summary
 """
 import logging
-import os
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.services.forex.broker.mt5_client import MT5Config
 from app.services.forex.broker.auto_trader import AutoTrader
-from app.services.forex.v2.risk import RiskConfig          # ← v2 RiskConfig
+from app.services.forex.v2.risk import RiskConfig
+from app.config import settings   # ← reads .env via pydantic-settings (correct)
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +30,15 @@ def get_trader() -> AutoTrader:
 
 def setup_trader(notify_callback=None) -> AutoTrader:
     """
-    Initialise the AutoTrader from environment variables.
-    Call this during FastAPI startup.
+    Initialise the AutoTrader from pydantic settings.
+    os.getenv() won't see .env values unless they're exported to the shell —
+    settings always reads .env correctly via pydantic-settings.
     """
     global _trader
 
-    login    = int(os.getenv("MT5_LOGIN", "0") or "0")
-    password = os.getenv("MT5_PASSWORD", "").strip()
-    server   = os.getenv("MT5_SERVER", "").strip()
+    login    = settings.mt5_login
+    password = (settings.mt5_password or "").strip()
+    server   = (settings.mt5_server  or "").strip()
 
     if not all([login, password, server]):
         logger.warning(
@@ -49,10 +50,10 @@ def setup_trader(notify_callback=None) -> AutoTrader:
     mt5_config = MT5Config(login=login, password=password, server=server)
 
     risk_config = RiskConfig(
-        risk_per_trade_pct  = float(os.getenv("RISK_PER_TRADE_PCT",  "1.0")),
-        max_open_trades     = int(os.getenv("MAX_OPEN_TRADES",       "3")),
-        max_daily_loss_pct  = float(os.getenv("MAX_DAILY_LOSS_PCT",  "5.0")),
-        min_confidence      = 0.60,   # v2: require higher confidence before trading live
+        risk_per_trade_pct  = settings.risk_per_trade_pct,
+        max_open_trades     = settings.max_open_trades,
+        max_daily_loss_pct  = settings.max_daily_loss_pct,
+        min_confidence      = 0.60,
         sl_atr_multiplier   = 1.5,
         tp_atr_multiplier   = 3.0,
     )
