@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import init_db
 import app.models  # noqa: F401
-from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading, forex, insights
+from app.routers import goals, net_worth, transactions, users, daily_goals, finance, trading, forex, insights, forex_debug
 from app.services.forex.scheduler import setup_trader, start_scheduler
 from app.services.ml.scheduler import add_ml_jobs
 from app.services.miss_scheduler import add_miss_penalty_job
@@ -83,6 +83,7 @@ app.include_router(finance.router)
 app.include_router(trading.router)
 app.include_router(forex.router)
 app.include_router(insights.router)
+app.include_router(forex_debug.router)
 
 
 @app.get("/health")
