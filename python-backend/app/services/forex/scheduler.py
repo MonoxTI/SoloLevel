@@ -53,7 +53,7 @@ def setup_trader(notify_callback=None) -> AutoTrader:
         risk_per_trade_pct  = settings.risk_per_trade_pct,
         max_open_trades     = settings.max_open_trades,
         max_daily_loss_pct  = settings.max_daily_loss_pct,
-        min_confidence      = 0.60,
+        min_confidence      = 0.40,
         sl_atr_multiplier   = 1.5,
         tp_atr_multiplier   = 3.0,
     )

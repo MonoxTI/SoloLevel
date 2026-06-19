@@ -6,6 +6,10 @@ import {
   setNetWorth, getNetWorth, logIncome,
   getTradingSignal,
 } from "../services/finance";
+import {
+  createNote, getNotes,
+  createTodo, getTodos, completeTodo, hoursElapsed,
+} from "../services/notesAndTodos";
 import { awardXP, buildXPMessage } from "../services/gamification";
 import { config } from "../config";
 
@@ -47,6 +51,11 @@ export async function handleParsed(ctx: Context, parsed: ParsedMessage) {
     case "QUERY_SIGNALS":   return handleSignals(ctx, parsed);
     case "DAILY_COMPLETE":  return handleDailyComplete(ctx, parsed);
     case "DAILY_STATUS":    return handleDailyStatus(ctx);
+    case "ADD_NOTE":        return handleAddNote(ctx, parsed);
+    case "QUERY_NOTES":     return handleQueryNotes(ctx);
+    case "ADD_TODO":        return handleAddTodo(ctx, parsed);
+    case "QUERY_TODOS":     return handleQueryTodos(ctx);
+    case "DONE_TODO":       return handleDoneTodo(ctx, parsed);
     case "HELP":            return handleHelp(ctx);
     default:
       await ctx.reply(parsed.replyText || "Type *help* to see commands.", { parse_mode: "Markdown" });
@@ -255,6 +264,106 @@ async function handleDailyStatus(ctx: Context) {
   }
 }
 
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+async function handleAddNote(ctx: Context, parsed: ParsedMessage) {
+  if (!parsed.noteContent) {
+    await ctx.reply("What should I note down?\nTry: *note: buy milk*", { parse_mode: "Markdown" });
+    return;
+  }
+  try {
+    await createNote(userId, parsed.noteContent);
+    await ctx.reply(`📝 Noted: "${parsed.noteContent}"\n\nView all your notes anytime on the dashboard.`, { parse_mode: "Markdown" });
+  } catch (err: any) {
+    console.error("[HANDLER] addNote error:", err?.message);
+    await ctx.reply("❌ Couldn't save that note.");
+  }
+}
+
+async function handleQueryNotes(ctx: Context) {
+  try {
+    const notes = await getNotes(userId);
+    if (!notes.length) {
+      await ctx.reply("No notes yet.\nTry: *note: buy milk*", { parse_mode: "Markdown" });
+      return;
+    }
+    const lines = notes.slice(0, 10).map((n: any, i: number) =>
+      `${i + 1}. ${n.content}\n   _${new Date(n.createdAt).toLocaleDateString("en-ZA")}_`
+    );
+    await ctx.reply(
+      `📝 *Your notes* (${notes.length} total)\n\n${lines.join("\n\n")}` +
+      (notes.length > 10 ? `\n\n_+${notes.length - 10} more — view all on the dashboard_` : ""),
+      { parse_mode: "Markdown" }
+    );
+  } catch (err: any) {
+    console.error("[HANDLER] queryNotes error:", err?.message);
+    await ctx.reply("❌ Couldn't fetch notes.");
+  }
+}
+
+// ── Todos ─────────────────────────────────────────────────────────────────────
+
+async function handleAddTodo(ctx: Context, parsed: ParsedMessage) {
+  if (!parsed.todoContent) {
+    await ctx.reply("What's the todo?\nTry: *todo: finish report*", { parse_mode: "Markdown" });
+    return;
+  }
+  try {
+    await createTodo(userId, parsed.todoContent);
+    await ctx.reply(
+      `✅ Todo added: "${parsed.todoContent}"\n\n` +
+      `⏰ Reminders at +10h, +15h, +22h\n` +
+      `🗑️ Auto-deletes after 24h`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err: any) {
+    console.error("[HANDLER] addTodo error:", err?.message);
+    await ctx.reply("❌ Couldn't save that todo.");
+  }
+}
+
+async function handleQueryTodos(ctx: Context) {
+  try {
+    const todos = await getTodos(userId, false);
+    if (!todos.length) {
+      await ctx.reply("No active todos.\nTry: *todo: finish report*", { parse_mode: "Markdown" });
+      return;
+    }
+    const lines = todos.map((t: any, i: number) => {
+      const hrs = hoursElapsed(new Date(t.createdAt));
+      const hoursLeft = Math.max(0, Math.round(24 - hrs));
+      return `${i + 1}. ${t.content}\n   ⏳ ${hoursLeft}h left`;
+    });
+    await ctx.reply(
+      `📋 *Your todos*\n\n${lines.join("\n\n")}\n\n_Mark done with: done todo 1_`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err: any) {
+    console.error("[HANDLER] queryTodos error:", err?.message);
+    await ctx.reply("❌ Couldn't fetch todos.");
+  }
+}
+
+async function handleDoneTodo(ctx: Context, parsed: ParsedMessage) {
+  if (!parsed.todoIndex) {
+    await ctx.reply("Which todo number?\nTry: *done todo 1*", { parse_mode: "Markdown" });
+    return;
+  }
+  try {
+    const todos = await getTodos(userId, false);
+    const target = todos[parsed.todoIndex - 1];
+    if (!target) {
+      await ctx.reply(`No todo #${parsed.todoIndex}. You have ${todos.length} active todos.`);
+      return;
+    }
+    await completeTodo(target.id);
+    await ctx.reply(`✅ Done: "${target.content}"`, { parse_mode: "Markdown" });
+  } catch (err: any) {
+    console.error("[HANDLER] doneTodo error:", err?.message);
+    await ctx.reply("❌ Couldn't complete that todo.");
+  }
+}
+
 async function handleHelp(ctx: Context) {
   await ctx.reply(
     `*MonoxBot Commands*\n\n` +
@@ -276,6 +385,13 @@ async function handleHelp(ctx: Context) {
     `📅 *Daily Goals*\n` +
     `  daily\n` +
     `  done gym · done code · done maths · done reading\n\n` +
+    `📝 *Notes* (kept forever, manage on dashboard)\n` +
+    `  note: buy milk\n` +
+    `  notes\n\n` +
+    `📋 *Todos* (reminders at +10h/+15h/+22h, deleted at +24h)\n` +
+    `  todo: finish report\n` +
+    `  todos\n` +
+    `  done todo 1\n\n` +
     `📈 *Trading*\n` +
     `  signals\n` +
     `  check EURUSD\n\n` +

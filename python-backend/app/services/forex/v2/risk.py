@@ -10,7 +10,7 @@ from typing import Optional
 class RiskConfig:
     risk_per_trade_pct: float = 1.0       # % of balance to risk per trade
     max_exposure_pct: float = 10.0        # max % in open trades total
-    min_rr_ratio: float = 2.0             # minimum reward:risk
+    min_rr_ratio: float = 1.5             # minimum reward:risk
     max_open_trades: int = 5
     max_daily_loss_pct: float = 3.0
     sl_atr_multiplier: float = 1.5        # SL = entry ± (ATR × this)

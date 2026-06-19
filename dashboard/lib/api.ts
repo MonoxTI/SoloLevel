@@ -101,3 +101,106 @@ export async function getTradingSignals(): Promise<TradingSignal[]> {
 export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
   return apiFetch(`/trading/signal/${symbol}`);
 }
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+export interface Note {
+  id: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getNotes(userId = USER_ID, notebookId?: string): Promise<Note[]> {
+  const params = new URLSearchParams({ user_id: userId }); if (notebookId) params.set("notebook_id", notebookId); return apiFetch(`/notes-todos/notes?${params}`);
+}
+
+export async function createNote(content: string, userId = USER_ID, notebookId?: string): Promise<Note> {
+  return apiFetch("/notes-todos/notes", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, content, notebook_id: notebookId }),
+  });
+}
+
+export async function updateNote(noteId: string, content: string): Promise<Note> {
+  return apiFetch(`/notes-todos/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function deleteNote(noteId: string) {
+  return apiFetch(`/notes-todos/notes/${noteId}`, { method: "DELETE" });
+}
+
+// ── Todos ─────────────────────────────────────────────────────────────────────
+export interface Todo {
+  id: string;
+  userId: string;
+  content: string;
+  completed: boolean;
+  reminded10h: boolean;
+  reminded15h: boolean;
+  reminded22h: boolean;
+  createdAt: string;
+  hoursElapsed: number;
+  hoursUntilExpiry: number;
+}
+
+export async function getTodos(userId = USER_ID, includeCompleted = false): Promise<Todo[]> {
+  return apiFetch(`/notes-todos/todos?user_id=${userId}&include_completed=${includeCompleted}`);
+}
+
+export async function createTodo(content: string, userId = USER_ID): Promise<Todo> {
+  return apiFetch("/notes-todos/todos", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, content, notebook_id: notebookId }),
+  });
+}
+
+export async function completeTodo(todoId: string): Promise<Todo> {
+  return apiFetch(`/notes-todos/todos/${todoId}/complete`, { method: "POST" });
+}
+
+export async function deleteTodo(todoId: string) {
+  return apiFetch(`/notes-todos/todos/${todoId}`, { method: "DELETE" });
+}
+
+// ── Notebooks ─────────────────────────────────────────────────────────────────
+export interface Notebook {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  emoji: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { notes: number };
+  notes?: Note[];
+}
+
+export async function getNotebooks(userId = USER_ID): Promise<Notebook[]> {
+  return apiFetch(`/notes-todos/notebooks?user_id=${userId}`);
+}
+
+export async function getNotebook(notebookId: string): Promise<Notebook> {
+  return apiFetch(`/notes-todos/notebooks/${notebookId}`);
+}
+
+export async function createNotebook(data: { name: string; emoji?: string; description?: string }, userId = USER_ID): Promise<Notebook> {
+  return apiFetch("/notes-todos/notebooks", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, ...data }),
+  });
+}
+
+export async function updateNotebook(notebookId: string, data: { name?: string; emoji?: string; description?: string }): Promise<Notebook> {
+  return apiFetch(`/notes-todos/notebooks/${notebookId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNotebook(notebookId: string) {
+  return apiFetch(`/notes-todos/notebooks/${notebookId}`, { method: "DELETE" });
+}

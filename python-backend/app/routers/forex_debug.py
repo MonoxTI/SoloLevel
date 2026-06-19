@@ -107,3 +107,102 @@ async def trader_state():
             "min_rr_ratio":       trader.risk.min_rr_ratio,
         },
     }
+
+
+@router.post("/force-trade/{symbol}")
+async def force_trade(symbol: str):
+    """
+    Step through _evaluate_pair for one symbol and return every decision point.
+    Shows exactly where the trade attempt dies.
+    """
+    from app.services.forex.v2.engine import analyse_pair_v2
+    from app.services.forex.v2.risk import validate_trade, calculate_sl_tp, calculate_position_size
+
+    trader = get_trader()
+    if not trader:
+        return {"error": "Trader not initialised"}
+
+    sym = symbol.upper()
+    steps = []
+
+    # Step 1: account info
+    account = trader.client.get_account_info()
+    steps.append({"step": "account", "result": account})
+    if "error" in account:
+        return {"failed_at": "account", "steps": steps}
+
+    balance = account["balance"]
+
+    # Step 2: existing positions
+    existing = trader.client.get_open_positions()
+    already_open = [p.symbol for p in existing]
+    steps.append({"step": "existing_positions", "result": already_open})
+    if sym in already_open:
+        return {"failed_at": "already_open", "steps": steps}
+
+    # Step 3: analyse
+    analysis = analyse_pair_v2(sym, balance, len(existing), 0.0, trader.risk)
+    steps.append({"step": "analysis", "result": {
+        "signal":       analysis.get("signal"),
+        "confidence":   analysis.get("confidence"),
+        "score":        analysis.get("score"),
+        "agreeing":     analysis.get("agreeing_strategies"),
+        "trade_setup":  analysis.get("trade_setup"),
+        "risk_check":   analysis.get("risk_check"),
+        "error":        analysis.get("error"),
+    }})
+    if analysis.get("error"):
+        return {"failed_at": "analysis_error", "steps": steps}
+    if analysis.get("signal") not in ("BUY", "SELL"):
+        return {"failed_at": "signal_is_hold", "steps": steps}
+    if not analysis.get("trade_setup"):
+        return {"failed_at": "no_trade_setup", "steps": steps}
+    if not analysis.get("risk_check"):
+        return {"failed_at": "no_risk_check", "steps": steps}
+    if not analysis["risk_check"]["approved"]:
+        return {"failed_at": f"risk_rejected: {analysis['risk_check']['reason']}", "steps": steps}
+
+    # Step 4: live price
+    price_info = trader.client.get_price(sym)
+    steps.append({"step": "live_price", "result": price_info})
+    if not price_info:
+        return {"failed_at": "no_live_price", "steps": steps}
+
+    signal    = analysis["signal"]
+    atr_val   = analysis.get("atr") or 0.001
+    live_price = price_info["ask"] if signal == "BUY" else price_info["bid"]
+
+    sl, tp = calculate_sl_tp(
+        entry_price=live_price,
+        direction=signal,
+        symbol=sym,
+        atr_val=atr_val,
+        config=trader.risk,
+    )
+    lot_size = calculate_position_size(
+        account_balance=balance,
+        entry_price=live_price,
+        stop_loss=sl,
+        symbol=sym,
+        config=trader.risk,
+    )
+    steps.append({"step": "sizing", "result": {
+        "entry": live_price, "sl": sl, "tp": tp, "lots": lot_size, "atr": atr_val
+    }})
+
+    # Step 5: place order
+    ok, result = trader.client.place_order(
+        symbol=sym,
+        direction=signal,
+        lot_size=lot_size,
+        stop_loss=sl,
+        take_profit=tp,
+        comment=f"MonoxBot·DEBUG·{signal}",
+    )
+    steps.append({"step": "place_order", "ok": ok, "result": result})
+
+    return {
+        "failed_at": None if ok else f"place_order_failed: {result}",
+        "trade_placed": ok,
+        "steps": steps,
+    }

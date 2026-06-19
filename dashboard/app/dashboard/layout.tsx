@@ -5,7 +5,7 @@ const NAV = [
   { href: "/dashboard/overview",  label: "Overview",  icon: "◈" },
   { href: "/dashboard/goals",     label: "Goals",     icon: "◎" },
   { href: "/dashboard/spending",  label: "Spending",  icon: "◱" },
-  { href: "/dashboard/trading",   label: "Trading",   icon: "◬" },
+  { href: "/dashboard/notes",     label: "Notes",     icon: "✎" },
   { href: "/dashboard/settings",  label: "Settings",  icon: "⊙" },
 ];
 

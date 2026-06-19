@@ -9,6 +9,11 @@ export type Intent =
   | "QUERY_SIGNALS"
   | "DAILY_COMPLETE"
   | "DAILY_STATUS"
+  | "ADD_NOTE"
+  | "QUERY_NOTES"
+  | "ADD_TODO"
+  | "QUERY_TODOS"
+  | "DONE_TODO"
   | "HELP"
   | "UNKNOWN";
 
@@ -25,6 +30,9 @@ export interface ParsedMessage {
   goalDeadline?: string;
   dailyGoalKey?: string;
   symbol?: string;
+  noteContent?: string;
+  todoContent?: string;
+  todoIndex?: number;
   replyText: string;
 }
 
@@ -116,6 +124,31 @@ export function parseMessage(text: string): ParsedMessage {
     return { intent: "HELP", replyText: "" };
   }
 
+  // ── Notes ─────────────────────────────────────────────────────────────────
+  // "note: buy milk", "note buy milk", "remember: call mom"
+  const noteMatch = raw.match(/^(note|remember)\s*[:\-]?\s*(.+)/i);
+  if (noteMatch && noteMatch[2]?.trim()) {
+    return { intent: "ADD_NOTE", noteContent: noteMatch[2].trim(), replyText: "" };
+  }
+  if (["/notes", "notes", "show notes", "my notes", "view notes", "list notes"].includes(lower)) {
+    return { intent: "QUERY_NOTES", replyText: "" };
+  }
+
+  // ── Todos ─────────────────────────────────────────────────────────────────
+  // "todo: finish report", "todo finish report", "add todo call accountant"
+  const todoMatch = raw.match(/^(todo|add todo|to-do|to do)\s*[:\-]?\s*(.+)/i);
+  if (todoMatch && todoMatch[2]?.trim()) {
+    return { intent: "ADD_TODO", todoContent: todoMatch[2].trim(), replyText: "" };
+  }
+  if (["/todos", "todos", "show todos", "my todos", "view todos", "list todos", "todo list"].includes(lower)) {
+    return { intent: "QUERY_TODOS", replyText: "" };
+  }
+  // "done todo 2", "complete todo 1", "finish todo 3"
+  const doneTodoMatch = raw.match(/^(done|complete|finish|finished)\s+todo\s+(\d+)/i);
+  if (doneTodoMatch) {
+    return { intent: "DONE_TODO", todoIndex: parseInt(doneTodoMatch[2]), replyText: "" };
+  }
+
   // ── Goals shortcuts ───────────────────────────────────────────────────────
   if (["/goals", "show goals", "my goals", "goals", "view goals", "list goals", "show my goals"].includes(lower)) {
     return { intent: "QUERY_GOALS", replyText: "" };
@@ -132,7 +165,7 @@ export function parseMessage(text: string): ParsedMessage {
   }
 
   // ── Daily complete — "done gym", "finished reading", "did code" ──────────
-  if (/^(done|did|finished|completed|complete)\s+\S+/i.test(raw)) {
+  if (/^(done|did|finished|completed|complete)\s+\S+/i.test(raw) && !doneTodoMatch) {
     const key = parseDailyKey(raw);
     if (key) return { intent: "DAILY_COMPLETE", dailyGoalKey: key, replyText: "" };
   }
@@ -141,7 +174,6 @@ export function parseMessage(text: string): ParsedMessage {
   if (["signals", "scan", "scan market", "trade signals", "forex", "forex signals"].includes(lower)) {
     return { intent: "QUERY_SIGNALS", replyText: "" };
   }
-  // "check EURUSD" or "check NPN.JO"
   const checkMatch = raw.match(/^check\s+([A-Za-z0-9.]+)$/i);
   if (checkMatch) {
     return { intent: "QUERY_SIGNALS", symbol: checkMatch[1].toUpperCase(), replyText: "" };
@@ -156,7 +188,6 @@ export function parseMessage(text: string): ParsedMessage {
   }
 
   // ── Log income ────────────────────────────────────────────────────────────
-  // "income R5000 salary", "received R3000 freelance", "salary R15000"
   if (/^(income|received|salary|earned|deposit|paid in)\b/i.test(raw)) {
     const amount      = parseAmount(raw);
     const afterCmd    = raw.replace(/^(income|received|salary|earned|deposit|paid in)\s*/i, "");
@@ -166,7 +197,6 @@ export function parseMessage(text: string): ParsedMessage {
   }
 
   // ── Log expense ───────────────────────────────────────────────────────────
-  // "log R250 Woolworths", "spent R150 Uber", "paid R500 doctor"
   if (/^(log|spent|spend|paid|bought|purchased)\b/i.test(raw)) {
     const amount      = parseAmount(raw);
     const afterCmd    = raw.replace(/^(log|spent|spend|paid|bought|purchased)\s*/i, "");
@@ -182,7 +212,6 @@ export function parseMessage(text: string): ParsedMessage {
   }
 
   // ── Set goal ──────────────────────────────────────────────────────────────
-  // "save R10000 hard by December", "goal R5000 easy", "target R2000 medium"
   if (/^(save|goal|set goal|target|achieve|reach)\b/i.test(raw)) {
     const amount     = parseAmount(raw);
     const difficulty = parseDifficulty(raw);

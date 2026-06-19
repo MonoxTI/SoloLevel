@@ -1,16 +1,5 @@
 """
-Forex v2 strategies — v1 conditions adapted to the v2 multi-timeframe interface.
-
-Each strategy receives dfs: dict[str, pd.DataFrame] (keys: "1h", "4h", "1d")
-and returns a StrategyResult. The v1 logic is preserved exactly because it was
-proven to fire — the only change is accepting multi-timeframe data and returning
-a StrategyResult instead of a plain dict.
-
-Strategies:
-  1. EMA Crossover  — EMA20/50/200 crossover with trend filter
-  2. Trend Follow   — EMA200 trend + RSI pullback entry
-  3. Breakout       — price breaks 20-bar high/low with ATR buffer
-  4. Pullback       — EMA50 trend + bounce off EMA21 with RSI confirm
+Forex v2 strategies — practical conditions that fire in real market conditions.
 """
 from dataclasses import dataclass, field
 import pandas as pd
@@ -20,14 +9,14 @@ import numpy as np
 @dataclass
 class StrategyResult:
     strategy: str
-    signal: str           # BUY | SELL | HOLD
-    confidence: float     # 0.0 – 1.0
+    signal: str
+    confidence: float
     timeframe: str
     details: str
     indicators: dict = field(default_factory=dict)
 
 
-# ── Shared indicator helpers ──────────────────────────────────────────────────
+# ── Indicators ────────────────────────────────────────────────────────────────
 
 def _ema(series: pd.Series, period: int) -> pd.Series:
     return series.ewm(span=period, adjust=False).mean()
@@ -55,10 +44,13 @@ def _prev(s: pd.Series, n: int = 1) -> float:
     return float(s.iloc[-(n + 1)])
 
 
-# ── Strategy 1: EMA Crossover ─────────────────────────────────────────────────
+# ── Strategy 1: EMA Trend ─────────────────────────────────────────────────────
 
 def strategy_ema_crossover(dfs: dict) -> StrategyResult:
-    """EMA20 crosses EMA50, filtered by EMA200 trend. Uses 1h data."""
+    """
+    EMA20 vs EMA50 alignment + EMA200 trend.
+    Fires when fast EMA is above/below slow EMA (not just at crossover).
+    """
     df = dfs.get("1h") if "1h" in dfs else next(iter(dfs.values()))
     close = df["Close"]
 
@@ -66,23 +58,30 @@ def strategy_ema_crossover(dfs: dict) -> StrategyResult:
     ema50  = _ema(close, 50)
     ema200 = _ema(close, 200)
 
-    curr_fast, prev_fast = _last(ema20), _prev(ema20)
-    curr_slow, prev_slow = _last(ema50), _prev(ema50)
-    trend_ema = _last(ema200)
+    e20  = _last(ema20)
+    e50  = _last(ema50)
+    e200 = _last(ema200)
     price = _last(close)
 
-    bullish_cross = prev_fast <= prev_slow and curr_fast > curr_slow
-    bearish_cross = prev_fast >= prev_slow and curr_fast < curr_slow
-    trend_up = price > trend_ema
-    trend_dn = price < trend_ema
+    # EMA alignment — bullish when 20 > 50 > 200
+    bull_align = e20 > e50 and price > e200
+    bear_align = e20 < e50 and price < e200
 
-    if bullish_cross and trend_up:
+    # Recent crossover (last 3 bars)
+    cross_up   = any(_prev(ema20, i) <= _prev(ema50, i) and
+                     _prev(ema20, i-1) > _prev(ema50, i-1)
+                     for i in range(1, 4))
+    cross_down = any(_prev(ema20, i) >= _prev(ema50, i) and
+                     _prev(ema20, i-1) < _prev(ema50, i-1)
+                     for i in range(1, 4))
+
+    if cross_up and bull_align:
         signal, confidence = "BUY", 0.75
-    elif bearish_cross and trend_dn:
+    elif cross_down and bear_align:
         signal, confidence = "SELL", 0.75
-    elif bullish_cross:
+    elif bull_align:
         signal, confidence = "BUY", 0.55
-    elif bearish_cross:
+    elif bear_align:
         signal, confidence = "SELL", 0.55
     else:
         signal, confidence = "HOLD", 0.0
@@ -92,16 +91,19 @@ def strategy_ema_crossover(dfs: dict) -> StrategyResult:
         signal=signal,
         confidence=confidence,
         timeframe="1h",
-        details=f"EMA20={curr_fast:.5f} {'>' if curr_fast > curr_slow else '<'} EMA50={curr_slow:.5f} · trend={'up' if trend_up else 'dn'}",
-        indicators={"ema20": round(curr_fast, 5), "ema50": round(curr_slow, 5),
-                    "ema200": round(trend_ema, 5), "bullish_cross": bullish_cross},
+        details=f"EMA20={e20:.5f} {'>' if e20 > e50 else '<'} EMA50={e50:.5f} · trend={'up' if price > e200 else 'dn'}",
+        indicators={"ema20": round(e20, 5), "ema50": round(e50, 5), "ema200": round(e200, 5)},
     )
 
 
-# ── Strategy 2: Trend Follow ──────────────────────────────────────────────────
+# ── Strategy 2: Trend + RSI ───────────────────────────────────────────────────
 
 def strategy_trend_follow(dfs: dict) -> StrategyResult:
-    """EMA200 + EMA50 define trend. RSI pullback entry. Uses 1h data."""
+    """
+    EMA200 defines trend. RSI range filter (not overbought/oversold).
+    BUY in uptrend when RSI < 65. SELL in downtrend when RSI > 35.
+    Much wider RSI window than original.
+    """
     df = dfs.get("1h") if "1h" in dfs else next(iter(dfs.values()))
     close = df["Close"]
 
@@ -109,26 +111,25 @@ def strategy_trend_follow(dfs: dict) -> StrategyResult:
     ema50  = _ema(close, 50)
     rsi    = _rsi(close, 14)
 
-    price    = _last(close)
-    e200     = _last(ema200)
-    e50      = _last(ema50)
-    rsi_now  = _last(rsi)
-    rsi_prev = _prev(rsi)
+    price   = _last(close)
+    e200    = _last(ema200)
+    e50     = _last(ema50)
+    rsi_now = _last(rsi)
 
     uptrend   = price > e200 and e50 > e200
     downtrend = price < e200 and e50 < e200
 
-    rsi_bouncing_up   = rsi_prev < 40 and rsi_now > rsi_prev
-    rsi_bouncing_down = rsi_prev > 60 and rsi_now < rsi_prev
+    # Wide RSI filter — just avoid extreme overbought/oversold
+    rsi_ok_buy  = rsi_now < 68
+    rsi_ok_sell = rsi_now > 32
 
-    if uptrend and rsi_bouncing_up and rsi_now < 60:
-        signal, confidence = "BUY", 0.80
-    elif downtrend and rsi_bouncing_down and rsi_now > 40:
-        signal, confidence = "SELL", 0.80
-    elif uptrend and rsi_now < 45:
-        signal, confidence = "BUY", 0.60
-    elif downtrend and rsi_now > 55:
-        signal, confidence = "SELL", 0.60
+    if uptrend and rsi_ok_buy:
+        # Higher confidence when RSI pulling back from mid-range
+        conf = 0.70 if rsi_now < 55 else 0.55
+        signal, confidence = "BUY", conf
+    elif downtrend and rsi_ok_sell:
+        conf = 0.70 if rsi_now > 45 else 0.55
+        signal, confidence = "SELL", conf
     else:
         signal, confidence = "HOLD", 0.0
 
@@ -146,24 +147,34 @@ def strategy_trend_follow(dfs: dict) -> StrategyResult:
 # ── Strategy 3: Breakout ──────────────────────────────────────────────────────
 
 def strategy_breakout(dfs: dict, lookback: int = 20) -> StrategyResult:
-    """Price breaks 20-bar high/low with ATR buffer. Uses 1h data."""
+    """
+    Price breaks 20-bar high/low with small ATR buffer.
+    Also fires on near-breakout (within 10% of ATR from the level).
+    """
     df = dfs.get("1h") if "1h" in dfs else next(iter(dfs.values()))
     close, high, low = df["Close"], df["High"], df["Low"]
 
     recent_high = float(high.iloc[-lookback:-1].max())
     recent_low  = float(low.iloc[-lookback:-1].min())
     price       = _last(close)
-    prev_price  = _prev(close)
     atr_val     = _last(_atr(df, 14))
-    buffer      = atr_val * 0.2
+    buffer      = atr_val * 0.1   # 10% of ATR (was 20%)
 
-    breakout_up   = prev_price <= recent_high and price > recent_high + buffer
-    breakout_down = prev_price >= recent_low  and price < recent_low - buffer
+    breakout_up   = price > recent_high - buffer   # at or above resistance
+    breakout_down = price < recent_low  + buffer   # at or below support
 
-    if breakout_up:
-        signal, confidence = "BUY", 0.70
+    # Prefer confirmed break
+    confirmed_up   = price > recent_high + buffer
+    confirmed_down = price < recent_low  - buffer
+
+    if confirmed_up:
+        signal, confidence = "BUY", 0.75
+    elif confirmed_down:
+        signal, confidence = "SELL", 0.75
+    elif breakout_up:
+        signal, confidence = "BUY", 0.60
     elif breakout_down:
-        signal, confidence = "SELL", 0.70
+        signal, confidence = "SELL", 0.60
     else:
         signal, confidence = "HOLD", 0.0
 
@@ -172,16 +183,19 @@ def strategy_breakout(dfs: dict, lookback: int = 20) -> StrategyResult:
         signal=signal,
         confidence=confidence,
         timeframe="1h",
-        details=f"Range {recent_low:.5f}–{recent_high:.5f} · Price={price:.5f}",
+        details=f"Range {recent_low:.5f}–{recent_high:.5f} · Price={price:.5f} · ATR={atr_val:.5f}",
         indicators={"recent_high": round(recent_high, 5), "recent_low": round(recent_low, 5),
-                    "atr": round(atr_val, 5), "breakout_up": breakout_up},
+                    "atr": round(atr_val, 5)},
     )
 
 
 # ── Strategy 4: Pullback ──────────────────────────────────────────────────────
 
 def strategy_pullback_macd(dfs: dict) -> StrategyResult:
-    """EMA50 trend + bounce off EMA21 with RSI confirm. Uses 1h data."""
+    """
+    EMA50 trend + price near EMA21.
+    Wider tolerance (1.5× ATR) and wider RSI window.
+    """
     df = dfs.get("1h") if "1h" in dfs else next(iter(dfs.values()))
     close = df["Close"]
 
@@ -191,25 +205,27 @@ def strategy_pullback_macd(dfs: dict) -> StrategyResult:
     atr   = _atr(df, 14)
 
     price    = _last(close)
-    prev     = _prev(close)
     e21      = _last(ema21)
     e50_now  = _last(ema50)
     e50_prev = float(ema50.iloc[-5])
     rsi_now  = _last(rsi)
     atr_val  = _last(atr)
-    tolerance = atr_val * 0.5
+    tolerance = atr_val * 1.5   # wider tolerance — was 0.5
 
     trend_up = e50_now > e50_prev
     trend_dn = e50_now < e50_prev
     near_ema21 = abs(price - e21) <= tolerance
 
-    bouncing_up   = near_ema21 and prev < price and trend_up  and rsi_now > 40
-    bouncing_down = near_ema21 and prev > price and trend_dn  and rsi_now < 60
+    # Wider RSI windows
+    bouncing_up   = near_ema21 and trend_up  and rsi_now < 65
+    bouncing_down = near_ema21 and trend_dn  and rsi_now > 35
 
     if bouncing_up:
-        signal, confidence = "BUY", 0.85
+        conf = 0.85 if rsi_now < 50 else 0.65
+        signal, confidence = "BUY", conf
     elif bouncing_down:
-        signal, confidence = "SELL", 0.85
+        conf = 0.85 if rsi_now > 50 else 0.65
+        signal, confidence = "SELL", conf
     else:
         signal, confidence = "HOLD", 0.0
 
@@ -218,19 +234,16 @@ def strategy_pullback_macd(dfs: dict) -> StrategyResult:
         signal=signal,
         confidence=confidence,
         timeframe="1h",
-        details=f"{'Uptrend' if trend_up else 'Downtrend'} · Near EMA21={e21:.5f} · RSI={rsi_now:.1f}",
+        details=f"{'Uptrend' if trend_up else 'Downtrend'} · Near EMA21={e21:.5f}({near_ema21}) · RSI={rsi_now:.1f}",
         indicators={"ema21": round(e21, 5), "rsi": round(rsi_now, 2),
-                    "near_ema21": near_ema21, "trend_up": trend_up},
+                    "near_ema21": near_ema21, "tolerance": round(tolerance, 5),
+                    "trend_up": trend_up, "trend_dn": trend_dn},
     )
 
 
 # ── Aggregator ────────────────────────────────────────────────────────────────
 
 def run_all_strategies(dfs: dict, weights: dict = None) -> dict:
-    """
-    Run all 4 strategies and combine with weighted voting.
-    Threshold: normalised score >= 0.40 (v1 proven threshold).
-    """
     results = [
         strategy_ema_crossover(dfs),
         strategy_trend_follow(dfs),
@@ -250,18 +263,17 @@ def run_all_strategies(dfs: dict, weights: dict = None) -> dict:
         total_confidence += weighted
 
     n = len(results)
-    avg_confidence = total_confidence / n
-    normalised     = total_score / n   # -1 to +1
+    normalised = total_score / n
 
     agreeing_buy  = sum(1 for r in results if r.signal == "BUY")
     agreeing_sell = sum(1 for r in results if r.signal == "SELL")
 
     if normalised >= 0.15:
         final_signal = "BUY"
-        final_confidence = min(0.95, avg_confidence + 0.1)
+        final_confidence = min(0.95, total_confidence / n + 0.05)
     elif normalised <= -0.15:
         final_signal = "SELL"
-        final_confidence = min(0.95, avg_confidence + 0.1)
+        final_confidence = min(0.95, total_confidence / n + 0.05)
     else:
         final_signal = "HOLD"
         final_confidence = 0.0
