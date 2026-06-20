@@ -28,26 +28,29 @@ function createBot(token: string, label: string): Bot {
 }
 
 async function main() {
+  // Connect DB first — everything else depends on it
   await prisma.$connect();
   console.log("✅ Database connected");
 
-  // ── Primary bot ────────────────────────────────────────────────────────────
+  // Todo scheduler only starts AFTER DB is confirmed ready
+  startTodoScheduler();
+
+  // ── Bots ──────────────────────────────────────────────────────────────────
   const token1 = process.env.TELEGRAM_BOT_TOKEN;
   if (!token1) { console.error("TELEGRAM_BOT_TOKEN not set"); process.exit(1); }
   const bot1 = createBot(token1, "Bot1");
   setBotInstance(bot1);
 
-  // ── Second bot (same data, different chat) ─────────────────────────────────
   const token2 = process.env.TELEGRAM_BOT_TOKEN_2;
   let bot2: Bot | null = null;
   if (token2) {
     bot2 = createBot(token2, "Bot2");
     console.log("✅ Second bot configured");
   } else {
-    console.log("ℹ️  TELEGRAM_BOT_TOKEN_2 not set — running single bot only");
+    console.log("ℹ️  TELEGRAM_BOT_TOKEN_2 not set — single bot mode");
   }
 
-  // ── Express server ─────────────────────────────────────────────────────────
+  // ── Express ────────────────────────────────────────────────────────────────
   const app = express();
   app.use(express.json());
 
@@ -66,14 +69,11 @@ async function main() {
   const PORT = parseInt(process.env.PORT ?? "3001");
   app.listen(PORT, () => console.log(`✅ Server on port ${PORT}`));
 
-  startTodoScheduler();
-
   process.once("SIGINT",  () => { bot1.stop(); bot2?.stop(); prisma.$disconnect(); });
   process.once("SIGTERM", () => { bot1.stop(); bot2?.stop(); prisma.$disconnect(); });
 
   console.log("🤖 Starting bots...");
   if (bot2) {
-    // Start both in parallel
     await Promise.all([bot1.start(), bot2.start()]);
   } else {
     await bot1.start();

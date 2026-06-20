@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -70,7 +69,6 @@ model Trade {
   @@index([symbol])
 }
 
-/// A named collection of notes. Created and managed via the dashboard.
 model Notebook {
   id          String   @id @default(uuid())
   userId      String
@@ -85,7 +83,6 @@ model Notebook {
   @@index([userId])
 }
 
-/// A note inside a notebook. Created via bot or dashboard. Kept forever.
 model Note {
   id         String   @id @default(uuid())
   userId     String
@@ -99,7 +96,6 @@ model Note {
   @@index([userId])
 }
 
-/// Todos auto-expire 24h after creation. Reminders fire at +10h, +15h, +22h.
 model Todo {
   id          String   @id @default(uuid())
   userId      String
