@@ -3,7 +3,7 @@ import type {
   User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
 } from "./types";
 
-const BASE = process.env.PYTHON_API_URL ?? "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
