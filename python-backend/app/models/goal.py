@@ -27,8 +27,8 @@ class Difficulty(str, enum.Enum):
 
 
 XP_BY_DIFFICULTY = {
-    Difficulty.EASY: 50,
-    Difficulty.MEDIUM: 150,
+    Difficulty.EASY: 90,
+    Difficulty.MEDIUM: 175,
     Difficulty.HARD: 300,
 }
 

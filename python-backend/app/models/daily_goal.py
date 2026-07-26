@@ -12,10 +12,10 @@ def gen_uuid() -> str:
 
 
 DAILY_GOALS = [
-    {"key": "read_book",      "title": "Read book 1h",   "xp_gain": 30, "xp_loss": 10},
+    {"key": "read_book",      "title": "Read book 1h",   "xp_gain": 35, "xp_loss": 10},
     {"key": "gym",            "title": "Go to gym",       "xp_gain": 40, "xp_loss": 15},
     {"key": "practice_code",  "title": "Practice code",   "xp_gain": 35, "xp_loss": 10},
-    {"key": "practice_maths", "title": "Practice maths",  "xp_gain": 35, "xp_loss": 10},
+    {"key": "Quiet", "title": "15 min of meditation",  "xp_gain": 30, "xp_loss": 10},
 ]
 
 
