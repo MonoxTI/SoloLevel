@@ -1,0 +1,13 @@
+steps:
+  - name: deploy
+    image: docker:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/storage/docker-apps/SoloLevel:/app
+    commands:
+      - cd /app
+      - git pull origin main
+      - docker compose up -d --build
+    when:
+      branch: main
+      event: push
