@@ -1,4 +1,5 @@
-const BASE = process.env.PYTHON_API_URL ?? "http://localhost:8000";
+//const BASE = process.env.PYTHON_API_URL ?? "http://localhost:8000";
+const BASE = "http://192.168.10.148:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
 
 async function apiFetch<T>(path: string): Promise<T> {
