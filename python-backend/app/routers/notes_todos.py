@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
 from pydantic import BaseModel
-from services.notes_todos_service import NotesTodosService
+from app.services.notes_todos_service import NotesTodosService
 
 router = APIRouter(prefix="/notes-todos", tags=["notes-todos"])
 
