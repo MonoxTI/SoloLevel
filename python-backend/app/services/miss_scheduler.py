@@ -69,7 +69,8 @@ async def apply_daily_miss_penalties():
 
     # Notify Telegram if there were any penalties
     if penalties_applied > 0:
-        node_url = os.getenv("NODE_BACKEND_URL", "http://localhost:3001")
+        #node_url = os.getenv("NODE_BACKEND_URL", "http://localhost:3001")
+        node_url = os.getenv("NODE_BACKEND_URL", "http://192.168.10.148:3001", "http://100.105.161.30:3001")
         missed_names = []
         async with httpx.AsyncClient(timeout=5) as client:
             for goal in DAILY_GOALS:
