@@ -83,7 +83,7 @@ export default async function OverviewPage() {
             <div className="text-center py-6">
               <p className="text-ink-2 text-xs mb-3">No active goals yet.</p>
               <Link
-                href="/goals"
+                href="/dashboard/goals"
                 className="text-[11px] px-4 py-2 rounded bg-cyan-muted border border-cyan/30
                            text-cyan hover:bg-cyan/10 transition-colors"
               >
@@ -97,7 +97,7 @@ export default async function OverviewPage() {
               ))}
               {goals.length > 3 && (
                 <Link
-                  href="/goals"
+                  href="/dashboard/goals"
                   className="block text-center text-[10px] text-ink-2 hover:text-cyan transition-colors pt-1"
                 >
                   +{goals.length - 3} more goals →
