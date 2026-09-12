@@ -3,9 +3,8 @@ import type {
   User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
 } from "./types";
 
-//const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const BASE = "http://192.168.10.148:8000";
-const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
+const USER_ID = "c2888153-9809-46f5-840a-35bc1c0bd2a8";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -26,7 +25,7 @@ export async function getUser(userId = USER_ID): Promise<User> {
 export async function getGoals(userId = USER_ID, completed?: boolean): Promise<Goal[]> {
   const params = new URLSearchParams({ user_id: userId });
   if (completed !== undefined) params.set("completed", String(completed));
-  return apiFetch(`/dashboard/goals/?${params}`);
+  return apiFetch(`/goals/?${params}`);
 }
 
 export async function createGoal(body: {
@@ -34,29 +33,25 @@ export async function createGoal(body: {
   target_value: number; description?: string;
   deadline?: string; userId?: string;
 }): Promise<Goal> {
-  //return apiFetch("/goals/", {
-  return apiFetch("/dashboard/goals/", {
+  return apiFetch("/goals/", {
     method: "POST",
     body: JSON.stringify({ user_id: body.userId ?? USER_ID, ...body }),
   });
 }
 
 export async function updateGoalProgress(goalId: string, currentValue: number): Promise<Goal> {
-  //return apiFetch(`/goals/${goalId}`, {
-    return apiFetch(`/dashboard/goals/${goalId}`, {
+  return apiFetch(`/goals/${goalId}`, {
     method: "PATCH",
     body: JSON.stringify({ current_value: currentValue }),
   });
 }
 
 export async function completeGoal(goalId: string) {
-  //return apiFetch(`/goals/${goalId}/complete`, { method: "POST" });
-  return apiFetch(`/dashboard/goals/${goalId}/complete`, { method: "POST" });
+  return apiFetch(`/goals/${goalId}/complete`, { method: "POST" });
 }
 
 export async function deleteGoal(goalId: string) {
-  //return apiFetch(`/goals/${goalId}`, { method: "DELETE" });
-  return apiFetch(`/dashboard/goals/${goalId}`, { method: "DELETE" });
+  return apiFetch(`/goals/${goalId}`, { method: "DELETE" });
 }
 
 // ── Transactions ──────────────────────────────────────────────────────────────
@@ -117,7 +112,9 @@ export interface Note {
 }
 
 export async function getNotes(userId = USER_ID, notebookId?: string): Promise<Note[]> {
-  const params = new URLSearchParams({ user_id: userId }); if (notebookId) params.set("notebook_id", notebookId); return apiFetch(`/notes-todos/notes?${params}`);
+  const params = new URLSearchParams({ user_id: userId });
+  if (notebookId) params.set("notebook_id", notebookId);
+  return apiFetch(`/notes-todos/notes?${params}`);
 }
 
 export async function createNote(content: string, userId = USER_ID, notebookId?: string): Promise<Note> {
@@ -159,7 +156,7 @@ export async function getTodos(userId = USER_ID, includeCompleted = false): Prom
 export async function createTodo(content: string, userId = USER_ID): Promise<Todo> {
   return apiFetch("/notes-todos/todos", {
     method: "POST",
-    body: JSON.stringify({ user_id: userId, content, notebook_id: notebookId }),
+    body: JSON.stringify({ user_id: userId, content }),
   });
 }
 
