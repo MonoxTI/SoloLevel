@@ -384,7 +384,7 @@ async function handleHelp(ctx: Context) {
     `  show goals\n\n` +
     `📅 *Daily Goals*\n` +
     `  daily\n` +
-    `  done gym · done code · done maths · done reading\n\n` +
+    `  done gym · done code · done meditaion · done reading\n\n` +
     `📝 *Notes* (kept forever, manage on dashboard)\n` +
     `  note: buy milk\n` +
     `  notes\n\n` +
