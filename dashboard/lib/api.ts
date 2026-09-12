@@ -26,7 +26,7 @@ export async function getUser(userId = USER_ID): Promise<User> {
 export async function getGoals(userId = USER_ID, completed?: boolean): Promise<Goal[]> {
   const params = new URLSearchParams({ user_id: userId });
   if (completed !== undefined) params.set("completed", String(completed));
-  return apiFetch(`/goals/?${params}`);
+  return apiFetch(`/dashboard/goals/?${params}`);
 }
 
 export async function createGoal(body: {
@@ -34,25 +34,29 @@ export async function createGoal(body: {
   target_value: number; description?: string;
   deadline?: string; userId?: string;
 }): Promise<Goal> {
-  return apiFetch("/goals/", {
+  //return apiFetch("/goals/", {
+  return apiFetch("/dashboard/goals/", {
     method: "POST",
     body: JSON.stringify({ user_id: body.userId ?? USER_ID, ...body }),
   });
 }
 
 export async function updateGoalProgress(goalId: string, currentValue: number): Promise<Goal> {
-  return apiFetch(`/goals/${goalId}`, {
+  //return apiFetch(`/goals/${goalId}`, {
+    return apiFetch(`/dashboard/goals/${goalId}`, {
     method: "PATCH",
     body: JSON.stringify({ current_value: currentValue }),
   });
 }
 
 export async function completeGoal(goalId: string) {
-  return apiFetch(`/goals/${goalId}/complete`, { method: "POST" });
+  //return apiFetch(`/goals/${goalId}/complete`, { method: "POST" });
+  return apiFetch(`/dashboard/goals/${goalId}/complete`, { method: "POST" });
 }
 
 export async function deleteGoal(goalId: string) {
-  return apiFetch(`/goals/${goalId}`, { method: "DELETE" });
+  //return apiFetch(`/goals/${goalId}`, { method: "DELETE" });
+  return apiFetch(`/dashboard/goals/${goalId}`, { method: "DELETE" });
 }
 
 // ── Transactions ──────────────────────────────────────────────────────────────
