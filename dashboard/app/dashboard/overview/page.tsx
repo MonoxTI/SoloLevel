@@ -75,7 +75,7 @@ export default async function OverviewPage() {
         <div className="bg-bg-2 border border-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] uppercase tracking-widest text-ink-2">Active Goals</h2>
-            <Link href="/goals" className="text-[10px] text-cyan hover:text-cyan-dim transition-colors">
+            <Link href="/dashboard/goals" className="text-[10px] text-cyan hover:text-cyan-dim transition-colors">
               view all →
             </Link>
           </div>
