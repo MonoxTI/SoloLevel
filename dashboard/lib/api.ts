@@ -3,7 +3,7 @@ import type {
   User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
 } from "./types";
 
-const BASE = "http://192.168.10.148:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const USER_ID = "c2888153-9809-46f5-840a-35bc1c0bd2a8";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {

@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
@@ -36,3 +37,7 @@ async def init_db():
     """Create all tables. Run once on startup."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text(
+            "ALTER TABLE goals ADD COLUMN IF NOT EXISTS "
+            "difficulty VARCHAR(6) NOT NULL DEFAULT 'MEDIUM'"
+        ))

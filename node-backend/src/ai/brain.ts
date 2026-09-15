@@ -69,7 +69,7 @@ const DAILY_KEYS: [string[], string][] = [
   [["read", "book", "reading"], "read_book"],
   [["gym", "workout", "exercise", "train", "training"], "gym"],
   [["code", "coding", "programming", "dev", "develop"], "practice_code"],
-  [["maths", "math", "mathematics"], "practice_maths"],
+  [["meditate", "meditation", "quiet"], "meditate"],
 ];
 
 function parseDailyKey(text: string): string | undefined {

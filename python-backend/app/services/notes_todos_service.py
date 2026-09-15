@@ -2,8 +2,7 @@ import httpx
 from fastapi import HTTPException
 import os
 
-#NODE_URL = os.getenv("NODE_BACKEND_URL", "http://localhost:3001")
-NODE_URL = os.getenv("NODE_BACKEND_URL", "http://192.168.10.148:3001", "http://100.105.161.30:3001")
+NODE_URL = os.getenv("NODE_BACKEND_URL", "http://localhost:3001")
 
 
 class NotesTodosService:
