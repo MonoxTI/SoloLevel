@@ -32,3 +32,15 @@ class DailyGoalLog(Base):
     logged_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="daily_logs")  # type: ignore[name-defined]
+
+
+class DailyGoalDefinition(Base):
+    __tablename__ = "daily_goal_definitions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=gen_uuid)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    goal_key: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    xp_gain: Mapped[int] = mapped_column(Integer, default=25)
+    xp_loss: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)

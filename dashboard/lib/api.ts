@@ -88,6 +88,17 @@ export async function getDailyStatus(userId = USER_ID): Promise<DailyStatus> {
   return apiFetch(`/daily-goals/today?user_id=${userId}`);
 }
 
+export async function createDailyGoal(title: string, xpGain = 25, xpLoss = 0, userId = USER_ID): Promise<DailyStatus["goals"][number]> {
+  return apiFetch<DailyStatus["goals"][number]>("/daily-goals/", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, title, xp_gain: xpGain, xp_loss: xpLoss }),
+  });
+}
+
+export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
+  return apiFetch(`/daily-goals/${goalKey}/complete?user_id=${userId}`, { method: "POST" });
+}
+
 // ── Portfolio ─────────────────────────────────────────────────────────────────
 export async function getPortfolio(userId = USER_ID): Promise<PortfolioSummary> {
   return apiFetch(`/finance/trades/${userId}`);

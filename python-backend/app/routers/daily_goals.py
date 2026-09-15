@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -7,7 +8,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.models import User, DailyGoalLog, DAILY_GOALS
+from app.models import User, DailyGoalDefinition, DailyGoalLog, DAILY_GOALS
 from app.services.xp import calc_level, xp_progress
 
 router = APIRouter(prefix="/daily-goals", tags=["daily-goals"])
@@ -40,9 +41,36 @@ class CompleteResult(BaseModel):
     progress: dict
 
 
+class CreateDailyGoal(BaseModel):
+    user_id: str
+    title: str
+    xp_gain: int = 25
+    xp_loss: int = 0
+
+
+def goal_definition(goal: dict | DailyGoalDefinition) -> dict:
+    if isinstance(goal, dict):
+        return goal
+    return {
+        "key": goal.goal_key, "title": goal.title,
+        "xp_gain": goal.xp_gain, "xp_loss": goal.xp_loss,
+    }
+
+
+async def get_goal_definitions(user_id: str, db: AsyncSession) -> list[dict]:
+    result = await db.execute(
+        select(DailyGoalDefinition).where(
+            DailyGoalDefinition.user_id == user_id,
+            DailyGoalDefinition.active.is_(True),
+        )
+    )
+    return [*DAILY_GOALS, *(goal_definition(g) for g in result.scalars().all())]
+
+
 @router.get("/today", response_model=DailyStatusOut)
 async def get_today_status(user_id: str, db: AsyncSession = Depends(get_db)):
     today = date.today()
+    goal_definitions = await get_goal_definitions(user_id, db)
     result = await db.execute(
         select(DailyGoalLog).where(
             and_(DailyGoalLog.user_id == user_id, DailyGoalLog.date == today)
@@ -51,7 +79,7 @@ async def get_today_status(user_id: str, db: AsyncSession = Depends(get_db)):
     logs = {log.goal_key: log for log in result.scalars().all()}
     goals_out = []
     total_xp = 0
-    for g in DAILY_GOALS:
+    for g in goal_definitions:
         log = logs.get(g["key"])
         if log:
             total_xp += log.xp_change
@@ -64,10 +92,30 @@ async def get_today_status(user_id: str, db: AsyncSession = Depends(get_db)):
     return DailyStatusOut(date=today, goals=goals_out, total_xp_today=total_xp)
 
 
+@router.post("/", response_model=DailyGoalOut, status_code=201)
+async def create_daily_goal(body: CreateDailyGoal, db: AsyncSession = Depends(get_db)):
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Daily goal title cannot be empty")
+    if not 0 <= body.xp_gain <= 1000 or not 0 <= body.xp_loss <= 1000:
+        raise HTTPException(status_code=400, detail="XP values must be between 0 and 1000")
+    goal = DailyGoalDefinition(
+        user_id=body.user_id, goal_key=f"custom_{uuid4().hex}",
+        title=title, xp_gain=body.xp_gain, xp_loss=body.xp_loss,
+    )
+    db.add(goal)
+    await db.commit()
+    return DailyGoalOut(
+        key=goal.goal_key, title=goal.title, xp_gain=goal.xp_gain,
+        xp_loss=goal.xp_loss, completed=False,
+    )
+
+
 @router.post("/{goal_key}/complete", response_model=CompleteResult)
 async def complete_daily(goal_key: str, user_id: str, db: AsyncSession = Depends(get_db)):
     today = date.today()
-    goal_def = next((g for g in DAILY_GOALS if g["key"] == goal_key), None)
+    goal_definitions = await get_goal_definitions(user_id, db)
+    goal_def = next((g for g in goal_definitions if g["key"] == goal_key), None)
     if not goal_def:
         raise HTTPException(status_code=404, detail=f"Unknown daily goal: {goal_key}")
 
@@ -119,7 +167,8 @@ async def complete_daily(goal_key: str, user_id: str, db: AsyncSession = Depends
 @router.post("/{goal_key}/miss", response_model=CompleteResult)
 async def miss_daily(goal_key: str, user_id: str, db: AsyncSession = Depends(get_db)):
     today = date.today()
-    goal_def = next((g for g in DAILY_GOALS if g["key"] == goal_key), None)
+    goal_definitions = await get_goal_definitions(user_id, db)
+    goal_def = next((g for g in goal_definitions if g["key"] == goal_key), None)
     if not goal_def:
         raise HTTPException(status_code=404, detail=f"Unknown daily goal: {goal_key}")
 

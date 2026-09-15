@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { cn } from "@/lib/utils";
+import { completeDailyGoal, createDailyGoal } from "@/lib/api";
 
 interface DailyGoal {
   key: string;
@@ -18,9 +19,13 @@ interface DailyStatus {
 }
 
 export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
+  const [goals, setGoals] = useState(status?.goals ?? []);
   const [ticked, setTicked] = useState<Set<string>>(
     new Set(status?.goals.filter(g => g.completed).map(g => g.key) ?? [])
   );
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [workingKey, setWorkingKey] = useState<string | null>(null);
 
   if (!status) {
     return (
@@ -31,8 +36,31 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
   }
 
   const done = ticked.size;
-  const total = status.goals.length;
+  const total = goals.length;
   const xpToday = status.total_xp_today;
+
+  async function handleComplete(key: string) {
+    setWorkingKey(key);
+    try {
+      await completeDailyGoal(key);
+      setTicked((current) => new Set([...current, key]));
+    } finally {
+      setWorkingKey(null);
+    }
+  }
+
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const created = await createDailyGoal(title.trim());
+      setGoals((current) => [...current, created]);
+      setTitle("");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="bg-bg-2 border border-border rounded-lg p-4">
@@ -50,7 +78,7 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
       </div>
 
       <div className="space-y-2">
-        {status.goals.map((goal) => {
+        {goals.map((goal) => {
           const isDone = ticked.has(goal.key);
           return (
             <div
@@ -76,16 +104,24 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
                   {goal.title}
                 </span>
               </div>
-              <div className="text-right flex-shrink-0">
+              <div className="flex items-center gap-3 text-right flex-shrink-0">
                 <span className={cn(
                   "text-[10px]",
                   isDone ? "text-green" : "text-ink-2"
                 )}>
                   {isDone ? `+${goal.xp_gain}` : `+${goal.xp_gain}`} XP
                 </span>
-                {!isDone && (
-                  <span className="text-[10px] text-red ml-1">/ -{goal.xp_loss}</span>
-                )}
+                {!isDone && <>
+                  <span className="text-[10px] text-red">/ -{goal.xp_loss}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleComplete(goal.key)}
+                    disabled={workingKey === goal.key}
+                    className="text-[10px] text-cyan hover:text-cyan-dim disabled:opacity-40"
+                  >
+                    {workingKey === goal.key ? "..." : "done"}
+                  </button>
+                </>}
               </div>
             </div>
           );
@@ -98,8 +134,25 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
         </div>
       )}
 
+      <form onSubmit={handleCreate} className="mt-4 flex gap-2">
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Add a daily goal"
+          className="min-w-0 flex-1 rounded-md border border-border bg-bg-3 px-3 py-2 text-xs text-ink outline-none placeholder:text-muted focus:border-cyan"
+          maxLength={100}
+        />
+        <button
+          type="submit"
+          disabled={saving || !title.trim()}
+          className="rounded-md border border-cyan/30 bg-cyan-muted px-3 text-[10px] text-cyan disabled:opacity-40"
+        >
+          {saving ? "..." : "+ Add"}
+        </button>
+      </form>
+
       <p className="text-[10px] text-muted mt-3 text-center">
-        Tick off via bot: "done gym" · "done code"
+        Complete each goal here or via the bot.
       </p>
     </div>
   );
