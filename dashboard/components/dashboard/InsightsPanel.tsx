@@ -16,7 +16,7 @@ interface Insight {
   generated_at: string;
 }
 
-const SEVERITY_STYLES = {
+const SEVERITY_STYLES: Record<string, string> = {
   ALERT:   "border-red/30 bg-red-muted text-red",
   WARNING: "border-amber/30 bg-amber-muted text-amber",
   INFO:    "border-cyan/30 bg-cyan-muted text-cyan",
@@ -47,7 +47,7 @@ export function InsightsPanel({ insights, userId }: { insights: Insight[]; userI
   async function markRead(id: string) {
     setDismissed(p => new Set([...p, id]));
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/insights/${id}/read`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://100.105.161.30:8000"}/insights/${id}/read`, {
         method: "PATCH",
       });
     } catch {}
