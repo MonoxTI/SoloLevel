@@ -1,6 +1,5 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://100.105.161.30:8000";
-//const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
-const USER_ID = "c2888153-9809-46f5-840a-35bc1c0bd2a8";
+const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "1";
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
