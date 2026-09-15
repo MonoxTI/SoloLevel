@@ -30,7 +30,7 @@ export default async function OverviewPage() {
   ]);
 
   // Expenses are negative amounts — abs gives the display value
-  const totalSpent = Math.abs(summary.reduce((s: number, r: any) => {
+const totalSpent = Math.abs((summary as any[]).reduce((s: number, r: any) => {
     const t = r.total ?? 0;
     return s + (t < 0 ? t : 0); // only count expense categories
   }, 0));

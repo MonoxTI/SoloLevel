@@ -272,7 +272,7 @@ async function handleAddNote(ctx: Context, parsed: ParsedMessage) {
     return;
   }
   try {
-    await createNote(userId, parsed.noteContent);
+    await createNote(userId, parsed.noteContent, "default");
     await ctx.reply(`📝 Noted: "${parsed.noteContent}"\n\nView all your notes anytime on the dashboard.`, { parse_mode: "Markdown" });
   } catch (err: any) {
     console.error("[HANDLER] addNote error:", err?.message);

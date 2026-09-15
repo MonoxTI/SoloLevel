@@ -1,0 +1,11 @@
+jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    user: 1000:1000 # Runs as your local 'monox' user profile to avoid root permission locks
+    network_mode: host # Directly binds to host ports for smooth DLNA/UPnP network discovery
+    volumes:
+      - /mnt/storage/docker-apps/jellyfin/config:/config
+      - /mnt/storage/docker-apps/jellyfin/cache:/cache
+      - /mnt/storage/media/movies:/data/movies       # Update this to your real movies path
+      - /mnt/storage/media/tvshows:/data/tvshows     # Update this to your real series path
+    restart: unless-stopped

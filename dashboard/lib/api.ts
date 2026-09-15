@@ -131,7 +131,7 @@ export async function getNotes(userId = USER_ID, notebookId?: string): Promise<N
 export async function createNote(content: string, userId = USER_ID, notebookId?: string): Promise<Note> {
   return apiFetch("/notes-todos/notes", {
     method: "POST",
-    body: JSON.stringify({ user_id: userId, content, notebook_id: notebookId }),
+    body: JSON.stringify({ user_id: userId, content }),
   });
 }
 
