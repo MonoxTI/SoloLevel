@@ -1,11 +1,67 @@
-jellyfin:
-    image: jellyfin/jellyfin:latest
-    container_name: jellyfin
-    user: 1000:1000 # Runs as your local 'monox' user profile to avoid root permission locks
-    network_mode: host # Directly binds to host ports for smooth DLNA/UPnP network discovery
-    volumes:
-      - /mnt/storage/docker-apps/jellyfin/config:/config
-      - /mnt/storage/docker-apps/jellyfin/cache:/cache
-      - /mnt/storage/media/movies:/data/movies       # Update this to your real movies path
-      - /mnt/storage/media/tvshows:/data/tvshows     # Update this to your real series path
+services:
+  sololevel-db:
+    image: postgres:15-alpine
+    container_name: sololevel-db
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: monox
+      POSTGRES_PASSWORD: Monokoane1#
+      POSTGRES_DB: sololevel
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monox -d sololevel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  sololevel-python-backend:
+    build:
+      context: ./python-backend
+    container_name: sololevel-python-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://monox:Monokoane1%23@sololevel-db:5432/sololevel
+    ports:
+      - "8000:8000"
+    depends_on:
+      sololevel-db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  sololevel-node-backend:
+    build:
+      context: ./node-backend
+    container_name: sololevel-node-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://monox:Monokoane1%23@sololevel-db:5432/sololevel
+    ports:
+      - "3001:3001"
+    depends_on:
+      sololevel-db:
+        condition: service_healthy
+
+  sololevel-frontend:
+    build:
+      context: ./dashboard
+    container_name: sololevel-frontend
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - sololevel-node-backend
+      - sololevel-python-backend
+    environment:
+      - PORT=3000
