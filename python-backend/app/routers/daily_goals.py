@@ -211,3 +211,23 @@ async def miss_daily(goal_key: str, user_id: str, db: AsyncSession = Depends(get
         message=f"❌ {goal_def['title']} missed. {xp_change} XP",
         progress=progress,
     )
+
+
+@router.delete("/{goal_key}")
+async def delete_daily_goal(goal_key: str, user_id: str, db: AsyncSession = Depends(get_db)):
+    if not goal_key.startswith("custom_"):
+        raise HTTPException(status_code=403, detail="Only custom dashboard daily goals can be deleted here")
+
+    goal = await db.execute(
+        select(DailyGoalDefinition).where(
+            DailyGoalDefinition.user_id == user_id,
+            DailyGoalDefinition.goal_key == goal_key,
+        )
+    )
+    goal_obj = goal.scalar_one_or_none()
+    if not goal_obj:
+        raise HTTPException(status_code=404, detail="Daily goal not found")
+
+    await db.delete(goal_obj)
+    await db.commit()
+    return None

@@ -9,6 +9,7 @@ export type Intent =
   | "QUERY_SIGNALS"
   | "DAILY_COMPLETE"
   | "DAILY_STATUS"
+  | "CLAIM_GOAL_XP"
   | "ADD_NOTE"
   | "QUERY_NOTES"
   | "ADD_TODO"
@@ -29,6 +30,7 @@ export interface ParsedMessage {
   goalTarget?: number;
   goalDeadline?: string;
   dailyGoalKey?: string;
+  goalName?: string;
   symbol?: string;
   noteContent?: string;
   todoContent?: string;
@@ -168,6 +170,13 @@ export function parseMessage(text: string): ParsedMessage {
   if (/^(done|did|finished|completed|complete)\s+\S+/i.test(raw) && !doneTodoMatch) {
     const key = parseDailyKey(raw);
     if (key) return { intent: "DAILY_COMPLETE", dailyGoalKey: key, replyText: "" };
+  }
+
+  // ── Claim goal XP — "goal achieved", "claim xp", "done goal save for rent" ─
+  const claimGoalMatch = raw.match(/^(?:goal achieved|goal done|claim xp|claim goal xp|complete goal|done goal|finished goal|achieved goal)\s*(.*)$/i);
+  if (claimGoalMatch) {
+    const goalName = (claimGoalMatch[2] || "").trim();
+    return { intent: "CLAIM_GOAL_XP", goalName, replyText: "" };
   }
 
   // ── Trading signals ───────────────────────────────────────────────────────

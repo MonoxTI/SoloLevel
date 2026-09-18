@@ -70,6 +70,20 @@ export async function completeDailyGoal(userId: string, goalKey: string) {
   return data;
 }
 
+export async function completeGoalByTitle(userId: string, title: string) {
+  const goals = await getGoals(userId, false);
+  const target = title.trim();
+  const match = goals.find((goal: any) =>
+    goal.title.toLowerCase() === target.toLowerCase() ||
+    goal.title.toLowerCase().includes(target.toLowerCase())
+  );
+  if (!match) {
+    throw new Error(`No active goal found matching "${title}"`);
+  }
+  const { data } = await api.post(`/goals/${match.id}/complete`);
+  return data;
+}
+
 // ── Net Worth ─────────────────────────────────────────────────────────────────
 export async function setNetWorth(params: {
   userId: string; baseValue: number; yearlyBudgetGoal?: number;

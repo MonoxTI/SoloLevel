@@ -2,7 +2,7 @@ import { Context } from "grammy";
 import { ParsedMessage } from "../ai/brain";
 import {
   logTransaction, getGoals, createGoal, getSpendingSummary,
-  getDailyStatus, completeDailyGoal,
+  getDailyStatus, completeDailyGoal, completeGoalByTitle,
   setNetWorth, getNetWorth, logIncome,
   getTradingSignal,
 } from "../services/finance";
@@ -51,6 +51,7 @@ export async function handleParsed(ctx: Context, parsed: ParsedMessage) {
     case "QUERY_SIGNALS":   return handleSignals(ctx, parsed);
     case "DAILY_COMPLETE":  return handleDailyComplete(ctx, parsed);
     case "DAILY_STATUS":    return handleDailyStatus(ctx);
+    case "CLAIM_GOAL_XP":   return handleClaimGoalXp(ctx, parsed);
     case "ADD_NOTE":        return handleAddNote(ctx, parsed);
     case "QUERY_NOTES":     return handleQueryNotes(ctx);
     case "ADD_TODO":        return handleAddTodo(ctx, parsed);
@@ -263,7 +264,22 @@ async function handleDailyStatus(ctx: Context) {
     await ctx.reply("❌ Couldn't fetch daily goals. Is the Python API running?");
   }
 }
-
+async function handleClaimGoalXp(ctx: Context, parsed: ParsedMessage) {
+  const title = (parsed.goalName || "").trim();
+  try {
+    const result = await completeGoalByTitle(userId, title || "latest");
+    await ctx.reply(
+      `✅ Goal claimed!\n*${result.title}*\n+${result.xp_reward} XP\n\nYou are now at *${result.level}* level.`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err: any) {
+    console.error("[HANDLER] claimGoalXp error:", err?.message);
+    await ctx.reply(
+      `❌ I couldn't find an active goal to claim XP for.\nTry: *goal achieved* or *claim xp <goal name>*`,
+      { parse_mode: "Markdown" }
+    );
+  }
+}
 // ── Notes ─────────────────────────────────────────────────────────────────────
 
 async function handleAddNote(ctx: Context, parsed: ParsedMessage) {

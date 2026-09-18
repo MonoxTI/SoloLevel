@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { cn } from "@/lib/utils";
-import { completeDailyGoal, createDailyGoal } from "@/lib/api";
+import { completeDailyGoal, createDailyGoal, deleteDailyGoal } from "@/lib/api";
 
 interface DailyGoal {
   key: string;
@@ -26,6 +26,7 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
   if (!status) {
     return (
@@ -59,6 +60,22 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
       setTitle("");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete(key: string) {
+    if (!key.startsWith("custom_")) return;
+    setDeletingKey(key);
+    try {
+      await deleteDailyGoal(key);
+      setGoals((current) => current.filter((goal) => goal.key !== key));
+      setTicked((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    } finally {
+      setDeletingKey(null);
     }
   }
 
@@ -121,6 +138,16 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
                   >
                     {workingKey === goal.key ? "..." : "done"}
                   </button>
+                  {goal.key.startsWith("custom_") && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(goal.key)}
+                      disabled={deletingKey === goal.key}
+                      className="text-[10px] text-red hover:text-red/80 disabled:opacity-40"
+                    >
+                      {deletingKey === goal.key ? "..." : "delete"}
+                    </button>
+                  )}
                 </>}
               </div>
             </div>

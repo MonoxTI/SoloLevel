@@ -25,6 +25,7 @@ export function createBot() {
   bot.command("daily",    async (ctx) => { await handleParsed(ctx, { intent: "DAILY_STATUS",  replyText: "" }); });
   bot.command("signals",  async (ctx) => { await handleParsed(ctx, { intent: "QUERY_SIGNALS", replyText: "" }); });
   bot.command("networth", async (ctx) => { await handleParsed(ctx, { intent: "QUERY_NET_WORTH", replyText: "" }); });
+  bot.command("claim",    async (ctx) => { await handleParsed(ctx, { intent: "CLAIM_GOAL_XP", goalName: ctx.match?.[0] ?? "", replyText: "" }); });
 
   // All text messages
   bot.on("message:text", async (ctx) => {

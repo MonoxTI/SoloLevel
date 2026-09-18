@@ -99,6 +99,10 @@ export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}/complete?user_id=${userId}`, { method: "POST" });
 }
 
+export async function deleteDailyGoal(goalKey: string, userId = USER_ID) {
+  return apiFetch(`/daily-goals/${goalKey}?user_id=${userId}`, { method: "DELETE" });
+}
+
 // ── Portfolio ─────────────────────────────────────────────────────────────────
 export async function getPortfolio(userId = USER_ID): Promise<PortfolioSummary> {
   return apiFetch(`/finance/trades/${userId}`);
