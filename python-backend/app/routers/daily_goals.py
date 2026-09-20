@@ -20,6 +20,7 @@ class DailyGoalOut(BaseModel):
     xp_gain: int
     xp_loss: int
     completed: bool
+    skipped: bool = False
     log_id: Optional[str] = None
 
 
@@ -27,6 +28,7 @@ class DailyStatusOut(BaseModel):
     date: date
     goals: list[DailyGoalOut]
     total_xp_today: int
+    break_active: bool = False
 
 
 class CompleteResult(BaseModel):
@@ -87,9 +89,15 @@ async def get_today_status(user_id: str, db: AsyncSession = Depends(get_db)):
             key=g["key"], title=g["title"],
             xp_gain=g["xp_gain"], xp_loss=g["xp_loss"],
             completed=log.completed if log else False,
+            skipped=log.skipped if log else False,
             log_id=log.id if log else None,
         ))
-    return DailyStatusOut(date=today, goals=goals_out, total_xp_today=total_xp)
+    return DailyStatusOut(
+        date=today,
+        goals=goals_out,
+        total_xp_today=total_xp,
+        break_active=any(log.skipped for log in logs.values()),
+    )
 
 
 @router.post("/", response_model=DailyGoalOut, status_code=201)
@@ -111,6 +119,32 @@ async def create_daily_goal(body: CreateDailyGoal, db: AsyncSession = Depends(ge
     )
 
 
+@router.post("/skip", response_model=DailyStatusOut)
+async def skip_daily_goals(user_id: str, db: AsyncSession = Depends(get_db)):
+    today = date.today()
+    definitions = await get_goal_definitions(user_id, db)
+    result = await db.execute(
+        select(DailyGoalLog).where(
+            and_(DailyGoalLog.user_id == user_id, DailyGoalLog.date == today)
+        )
+    )
+    logs = {log.goal_key: log for log in result.scalars().all()}
+
+    for goal in definitions:
+        log = logs.get(goal["key"])
+        if log is None:
+            db.add(DailyGoalLog(
+                user_id=user_id, goal_key=goal["key"], goal_title=goal["title"],
+                date=today, completed=False, skipped=True, xp_change=0,
+            ))
+        elif not log.completed:
+            log.skipped = True
+            log.xp_change = 0
+
+    await db.commit()
+    return await get_today_status(user_id, db)
+
+
 @router.post("/{goal_key}/complete", response_model=CompleteResult)
 async def complete_daily(goal_key: str, user_id: str, db: AsyncSession = Depends(get_db)):
     today = date.today()
@@ -129,6 +163,8 @@ async def complete_daily(goal_key: str, user_id: str, db: AsyncSession = Depends
     log = existing.scalar_one_or_none()
     if log and log.completed:
         raise HTTPException(status_code=400, detail="Already completed today")
+    if log and log.skipped:
+        raise HTTPException(status_code=400, detail="Daily goals are on a break today")
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
@@ -148,7 +184,7 @@ async def complete_daily(goal_key: str, user_id: str, db: AsyncSession = Depends
         log = DailyGoalLog(
             user_id=user_id, goal_key=goal_key,
             goal_title=goal_def["title"], date=today,
-            completed=True, xp_change=xp_change,
+            completed=True, skipped=False, xp_change=xp_change,
         )
         db.add(log)
 
@@ -182,6 +218,8 @@ async def miss_daily(goal_key: str, user_id: str, db: AsyncSession = Depends(get
     log = existing.scalar_one_or_none()
     if log and log.completed:
         raise HTTPException(status_code=400, detail="Goal was completed — no penalty")
+    if log and log.skipped:
+        raise HTTPException(status_code=400, detail="Daily goals skipped today — no penalty")
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()

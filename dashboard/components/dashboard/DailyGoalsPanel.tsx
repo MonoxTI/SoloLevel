@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { cn } from "@/lib/utils";
-import { completeDailyGoal, createDailyGoal, deleteDailyGoal } from "@/lib/api";
+import { completeDailyGoal, createDailyGoal, deleteDailyGoal, skipDailyGoals } from "@/lib/api";
 
 interface DailyGoal {
   key: string;
@@ -10,12 +10,14 @@ interface DailyGoal {
   xp_gain: number;
   xp_loss: number;
   completed: boolean;
+  skipped?: boolean;
 }
 
 interface DailyStatus {
   date: string;
   total_xp_today: number;
   goals: DailyGoal[];
+  break_active?: boolean;
 }
 
 export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
@@ -27,6 +29,10 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
   const [saving, setSaving] = useState(false);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [takingBreak, setTakingBreak] = useState(false);
+  const [onBreak, setOnBreak] = useState(
+    status?.break_active ?? status?.goals.every((goal) => goal.skipped) ?? false
+  );
 
   if (!status) {
     return (
@@ -79,6 +85,16 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
     }
   }
 
+  async function handleBreak() {
+    setTakingBreak(true);
+    try {
+      const updated = await skipDailyGoals();
+      setOnBreak(updated.break_active ?? true);
+    } finally {
+      setTakingBreak(false);
+    }
+  }
+
   return (
     <div className="bg-bg-2 border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
@@ -128,7 +144,7 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
                 )}>
                   {isDone ? `+${goal.xp_gain}` : `+${goal.xp_gain}`} XP
                 </span>
-                {!isDone && <>
+                {!isDone && !onBreak && <>
                   <span className="text-[10px] text-red">/ -{goal.xp_loss}</span>
                   <button
                     type="button"
@@ -138,17 +154,17 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
                   >
                     {workingKey === goal.key ? "..." : "done"}
                   </button>
-                  {goal.key.startsWith("custom_") && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(goal.key)}
-                      disabled={deletingKey === goal.key}
-                      className="text-[10px] text-red hover:text-red/80 disabled:opacity-40"
-                    >
-                      {deletingKey === goal.key ? "..." : "delete"}
-                    </button>
-                  )}
                 </>}
+                {goal.key.startsWith("custom_") && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(goal.key)}
+                    disabled={deletingKey === goal.key}
+                    className="text-[10px] text-red hover:text-red/80 disabled:opacity-40"
+                  >
+                    {deletingKey === goal.key ? "..." : "delete"}
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -158,6 +174,12 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
       {done === total && (
         <div className="mt-3 text-center text-[11px] text-green">
           🔥 All done today! Perfect day streak!
+        </div>
+      )}
+
+      {onBreak && (
+        <div className="mt-3 rounded-md border border-amber/20 bg-amber-muted px-3 py-2 text-center text-[11px] text-amber">
+          Break active today. No daily-goal XP will be deducted.
         </div>
       )}
 
@@ -177,6 +199,15 @@ export function DailyGoalsPanel({ status }: { status: DailyStatus | null }) {
           {saving ? "..." : "+ Add"}
         </button>
       </form>
+
+      <button
+        type="button"
+        onClick={handleBreak}
+        disabled={takingBreak || onBreak}
+        className="mt-3 w-full rounded-md border border-amber/30 bg-amber-muted px-3 py-2 text-[10px] text-amber disabled:opacity-50"
+      >
+        {takingBreak ? "Saving..." : onBreak ? "Break active today" : "Take a break today"}
+      </button>
 
       <p className="text-[10px] text-muted mt-3 text-center">
         Complete each goal here or via the bot.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn, formatZAR, formatDate, daysUntil } from "@/lib/utils";
 import { GOAL_TYPE_LABELS, DIFFICULTY_COLORS, DIFFICULTY_XP } from "@/lib/types";
 import type { Goal } from "@/lib/types";
@@ -17,6 +18,7 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, onComplete, onDelete, compact = false }: GoalCardProps) {
+  const router = useRouter();
   const [completing, setCompleting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -30,6 +32,7 @@ export function GoalCard({ goal, onComplete, onDelete, compact = false }: GoalCa
     try {
       await completeGoal(goal.id);
       onComplete?.(goal.id);
+      router.refresh();
     } catch { setCompleting(false); }
   }
 
@@ -144,8 +147,8 @@ export function GoalCard({ goal, onComplete, onDelete, compact = false }: GoalCa
               </button>
             )}
 
-            {/* Complete button */}
-            {!goal.completed && goal.progress_pct >= 100 && (
+            {/* Claim XP button */}
+            {!goal.completed && (
               <button
                 onClick={handleComplete}
                 disabled={completing}
@@ -156,6 +159,12 @@ export function GoalCard({ goal, onComplete, onDelete, compact = false }: GoalCa
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {!compact && !goal.completed && (
+        <div className="mt-2 border-t border-border pt-2 text-[10px] text-muted">
+          Telegram: <span className="text-ink-2">goal achieved</span> · <span className="text-ink-2">claim xp</span> · <span className="text-ink-2">claim xp {goal.title.toLowerCase()}</span> · <span className="text-ink-2">done goal {goal.title.toLowerCase()}</span>
         </div>
       )}
     </div>

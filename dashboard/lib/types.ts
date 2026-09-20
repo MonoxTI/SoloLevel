@@ -62,6 +62,7 @@ export interface DailyGoal {
   xp_gain: number;
   xp_loss: number;
   completed: boolean;
+  skipped?: boolean;
   log_id: string | null;
 }
 
@@ -69,6 +70,7 @@ export interface DailyStatus {
   date: string;
   goals: DailyGoal[];
   total_xp_today: number;
+  break_active?: boolean;
 }
 
 export interface PortfolioTrade {

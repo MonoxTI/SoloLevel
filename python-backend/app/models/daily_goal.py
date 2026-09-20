@@ -28,6 +28,7 @@ class DailyGoalLog(Base):
     goal_title: Mapped[str] = mapped_column(String, nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    skipped: Mapped[bool] = mapped_column(Boolean, default=False)
     xp_change: Mapped[int] = mapped_column(Integer, default=0)
     logged_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

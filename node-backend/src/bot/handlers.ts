@@ -269,7 +269,7 @@ async function handleClaimGoalXp(ctx: Context, parsed: ParsedMessage) {
   try {
     const result = await completeGoalByTitle(userId, title || "latest");
     await ctx.reply(
-      `✅ Goal claimed!\n*${result.title}*\n+${result.xp_reward} XP\n\nYou are now at *${result.level}* level.`,
+      `✅ Goal claimed!\n*${result.title}*\n+${result.xp_reward} XP\n\nYou are now at level *${result.new_level}*.`,
       { parse_mode: "Markdown" }
     );
   } catch (err: any) {

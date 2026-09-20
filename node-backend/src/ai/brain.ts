@@ -175,7 +175,7 @@ export function parseMessage(text: string): ParsedMessage {
   // ── Claim goal XP — "goal achieved", "claim xp", "done goal save for rent" ─
   const claimGoalMatch = raw.match(/^(?:goal achieved|goal done|claim xp|claim goal xp|complete goal|done goal|finished goal|achieved goal)\s*(.*)$/i);
   if (claimGoalMatch) {
-    const goalName = (claimGoalMatch[2] || "").trim();
+    const goalName = (claimGoalMatch[1] || "").trim();
     return { intent: "CLAIM_GOAL_XP", goalName, replyText: "" };
   }
 

@@ -73,15 +73,17 @@ export async function completeDailyGoal(userId: string, goalKey: string) {
 export async function completeGoalByTitle(userId: string, title: string) {
   const goals = await getGoals(userId, false);
   const target = title.trim();
-  const match = goals.find((goal: any) =>
-    goal.title.toLowerCase() === target.toLowerCase() ||
-    goal.title.toLowerCase().includes(target.toLowerCase())
-  );
+  const match = target
+    ? goals.find((goal: any) =>
+        goal.title.toLowerCase() === target.toLowerCase() ||
+        goal.title.toLowerCase().includes(target.toLowerCase())
+      )
+    : goals[0];
   if (!match) {
     throw new Error(`No active goal found matching "${title}"`);
   }
   const { data } = await api.post(`/goals/${match.id}/complete`);
-  return data;
+  return { ...data, title: match.title, xp_reward: match.xp_reward };
 }
 
 // ── Net Worth ─────────────────────────────────────────────────────────────────

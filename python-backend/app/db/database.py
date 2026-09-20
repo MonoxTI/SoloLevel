@@ -41,3 +41,7 @@ async def init_db():
             "ALTER TABLE goals ADD COLUMN IF NOT EXISTS "
             "difficulty VARCHAR(6) NOT NULL DEFAULT 'MEDIUM'"
         ))
+        await conn.execute(text(
+            "ALTER TABLE daily_goal_logs ADD COLUMN IF NOT EXISTS "
+            "skipped BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
