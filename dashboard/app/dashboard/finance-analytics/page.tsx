@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const BASE    = "http://192.168.10.148:8000";
+const BASE    = "http://100.105.161.30:8000";
 const USER_ID = "c2888153-9809-46f5-840a-35bc1c0bd2a8";
 
 async function apiFetch<T>(path: string): Promise<T> {

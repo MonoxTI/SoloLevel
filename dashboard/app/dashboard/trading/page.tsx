@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const BASE = "http://192.168.10.148:8000";
+const BASE = "http://100.105.161.30:8000";
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
