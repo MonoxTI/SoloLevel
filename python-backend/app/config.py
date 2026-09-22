@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     mt5_password: str = ""
     mt5_server: str = ""
 
+    deriv_api_token: str = ""
+    deriv_account_id: str = ""
+
     # Risk management
     risk_per_trade_pct: float = 1.0
     max_open_trades: int = 5

@@ -10,6 +10,7 @@ from app.routers import goals, net_worth, transactions, users, daily_goals, fina
 from app.routers import notes_todos
 from app.services.ml.scheduler import add_ml_jobs
 from app.services.miss_scheduler import add_miss_penalty_job
+from app.routers import deriv
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ app.include_router(finance.router)
 app.include_router(trading.router)
 app.include_router(insights.router)
 app.include_router(notes_todos.router)
-
+app.include_router(deriv.router)
 
 @app.get("/health")
 async def health():

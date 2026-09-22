@@ -26,3 +26,5 @@ scikit-learn>=1.4
 
 # MetaTrader 5 — Windows only, comment out on Linux/Mac
 # MetaTrader5>=5.0
+
+websockets>=12.0

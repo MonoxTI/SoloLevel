@@ -6,6 +6,8 @@ const NAV = [
   { href: "/dashboard/goals",     label: "Goals",     icon: "◎" },
   { href: "/dashboard/spending",  label: "Spending",  icon: "◱" },
   { href: "/dashboard/notes",     label: "Notes",     icon: "✎" },
+  { href: "/dashboard/trading", label: "Trading",    icon: "◬" },
+  { href: "/dashboard/finance-analytics", label: "Analytics",  icon: "◭" },
   { href: "/dashboard/settings",  label: "Settings",  icon: "⊙" },
 ];
 
@@ -51,7 +53,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         )}
       </aside>
-
       <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
