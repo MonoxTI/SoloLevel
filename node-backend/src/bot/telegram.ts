@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import { config } from "../config";
 import { parseMessage } from "../ai/brain";
-import { handleParsed, handleNotebookSelection, handleQueryNotebooks, notebookState } from "./handlers";
+import { handleParsed } from "./handlers";
 
 export function createBot() {
   const bot = new Bot(config.telegramToken);
@@ -14,19 +14,18 @@ export function createBot() {
       `• _save R5000 hard by December_\n` +
       `• _done gym_\n` +
       `• _daily_\n` +
-      `• _signals_\n` +
-      `• _notes_\n\n` +
+      `• _signals_\n\n` +
       `Type *help* for all commands.`,
       { parse_mode: "Markdown" }
     );
   });
 
-  bot.command("goals",     async (ctx) => { await ctx.reply("Loading goals..."); await handleParsed(ctx, { intent: "QUERY_GOALS",   replyText: "" }); });
-  bot.command("spending",  async (ctx) => { await ctx.reply("Loading spending..."); await handleParsed(ctx, { intent: "QUERY_SPENDING", replyText: "" }); });
-  bot.command("daily",     async (ctx) => { await handleParsed(ctx, { intent: "DAILY_STATUS",  replyText: "" }); });
-  bot.command("signals",   async (ctx) => { await handleParsed(ctx, { intent: "QUERY_SIGNALS", replyText: "" }); });
-  bot.command("networth",  async (ctx) => { await handleParsed(ctx, { intent: "QUERY_NET_WORTH", replyText: "" }); });
-  bot.command("notes",     async (ctx) => { await handleQueryNotebooks(ctx); });
+  bot.command("goals",    async (ctx) => { await ctx.reply("Loading goals..."); await handleParsed(ctx, { intent: "QUERY_GOALS",   replyText: "" }); });
+  bot.command("spending", async (ctx) => { await ctx.reply("Loading spending..."); await handleParsed(ctx, { intent: "QUERY_SPENDING", replyText: "" }); });
+  bot.command("daily",    async (ctx) => { await handleParsed(ctx, { intent: "DAILY_STATUS",  replyText: "" }); });
+  bot.command("signals",  async (ctx) => { await handleParsed(ctx, { intent: "QUERY_SIGNALS", replyText: "" }); });
+  bot.command("networth", async (ctx) => { await handleParsed(ctx, { intent: "QUERY_NET_WORTH", replyText: "" }); });
+  bot.command("claim",    async (ctx) => { await handleParsed(ctx, { intent: "CLAIM_GOAL_XP", goalName: ctx.match?.[0] ?? "", replyText: "" }); });
 
   // All text messages
   bot.on("message:text", async (ctx) => {
@@ -37,18 +36,7 @@ export function createBot() {
 
     console.log(`[BOT] Received: "${text}"`);
 
-    const chatId = ctx.chat?.id;
-
     try {
-      // ── Number reply → notebook selection ──────────────────────────────
-      if (chatId && /^\d+$/.test(text.trim())) {
-        const state = notebookState.get(chatId);
-        if (state) {
-          await handleNotebookSelection(ctx, parseInt(text.trim(), 10));
-          return;
-        }
-      }
-
       const parsed = parseMessage(text);
       console.log(`[BOT] Parsed intent: ${parsed.intent}`, JSON.stringify(parsed, null, 2));
 
@@ -60,7 +48,6 @@ export function createBot() {
           `• *income R5000 salary*\n` +
           `• *save R5000 hard by December*\n` +
           `• *done gym*\n` +
-          `• *notes*\n` +
           `• *signals*\n` +
           `• *help*`,
           { parse_mode: "Markdown" }
