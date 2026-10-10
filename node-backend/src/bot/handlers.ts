@@ -89,7 +89,7 @@ async function handleLogIncome(ctx: Context, parsed: ParsedMessage) {
   }
   try {
     await logIncome({ userId, amount: parsed.amount, merchant: parsed.merchant ?? "Income" });
-    const xp = await awardXP(userId, "LOG_EXPENSE");
+    await awardXP(userId, "LOG_EXPENSE");
     await ctx.reply(
       `💰 Income logged: ${formatZAR(parsed.amount)}\nNet worth updated automatically.`,
       { parse_mode: "Markdown" }
@@ -264,6 +264,7 @@ async function handleDailyStatus(ctx: Context) {
     await ctx.reply("❌ Couldn't fetch daily goals. Is the Python API running?");
   }
 }
+
 async function handleClaimGoalXp(ctx: Context, parsed: ParsedMessage) {
   const title = (parsed.goalName || "").trim();
   try {
@@ -280,6 +281,7 @@ async function handleClaimGoalXp(ctx: Context, parsed: ParsedMessage) {
     );
   }
 }
+
 // ── Notes ─────────────────────────────────────────────────────────────────────
 
 async function handleAddNote(ctx: Context, parsed: ParsedMessage) {
@@ -400,7 +402,7 @@ async function handleHelp(ctx: Context) {
     `  show goals\n\n` +
     `📅 *Daily Goals*\n` +
     `  daily\n` +
-    `  done gym · done code · done meditaion · done reading\n\n` +
+    `  done gym · done code · done meditation · done reading\n\n` +
     `📝 *Notes* (kept forever, manage on dashboard)\n` +
     `  note: buy milk\n` +
     `  notes\n\n` +

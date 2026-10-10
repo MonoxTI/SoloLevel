@@ -1,5 +1,5 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://100.105.161.30:8000";
-const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "1";
+const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
+const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
@@ -55,7 +55,7 @@ export async function getInsights(userId = USER_ID) {
     confidence: number | null;
     read: boolean;
     generated_at: string;
-  }>>(`/insights?user_id=${userId}&unread_only=false&limit=10`);
+  }>>(`/insights/${userId}?unread_only=false`);
 }
 
 export async function getTradingSignals() {

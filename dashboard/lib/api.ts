@@ -3,8 +3,8 @@ import type {
   User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
 } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://100.105.161.30:8000";
-const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "1";
+const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
+const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -88,23 +88,25 @@ export async function getDailyStatus(userId = USER_ID): Promise<DailyStatus> {
   return apiFetch(`/daily-goals/today?user_id=${userId}`);
 }
 
-export async function createDailyGoal(title: string, xpGain = 25, xpLoss = 0, userId = USER_ID): Promise<DailyStatus["goals"][number]> {
-  return apiFetch<DailyStatus["goals"][number]>("/daily-goals/", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, title, xp_gain: xpGain, xp_loss: xpLoss }),
-  });
-}
-
 export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}/complete?user_id=${userId}`, { method: "POST" });
 }
 
-export async function skipDailyGoals(userId = USER_ID) {
-  return apiFetch<DailyStatus>(`/daily-goals/skip?user_id=${userId}`, { method: "POST" });
+export async function createDailyGoal(body: {
+  key: string; label: string; xp?: number; userId?: string;
+}) {
+  return apiFetch("/daily-goals/", {
+    method: "POST",
+    body: JSON.stringify({ user_id: body.userId ?? USER_ID, ...body }),
+  });
 }
 
 export async function deleteDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}?user_id=${userId}`, { method: "DELETE" });
+}
+
+export async function skipDailyGoals(userId = USER_ID) {
+  return apiFetch(`/daily-goals/skip?user_id=${userId}`, { method: "POST" });
 }
 
 // ── Portfolio ─────────────────────────────────────────────────────────────────
@@ -119,109 +121,4 @@ export async function getTradingSignals(): Promise<TradingSignal[]> {
 
 export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
   return apiFetch(`/trading/signal/${symbol}`);
-}
-
-// ── Notes ─────────────────────────────────────────────────────────────────────
-export interface Note {
-  id: string;
-  userId: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export async function getNotes(userId = USER_ID, notebookId?: string): Promise<Note[]> {
-  const params = new URLSearchParams({ user_id: userId });
-  if (notebookId) params.set("notebook_id", notebookId);
-  return apiFetch(`/notes-todos/notes?${params}`);
-}
-
-export async function createNote(content: string, userId = USER_ID, notebookId?: string): Promise<Note> {
-  return apiFetch("/notes-todos/notes", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, content }),
-  });
-}
-
-export async function updateNote(noteId: string, content: string): Promise<Note> {
-  return apiFetch(`/notes-todos/notes/${noteId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ content }),
-  });
-}
-
-export async function deleteNote(noteId: string) {
-  return apiFetch(`/notes-todos/notes/${noteId}`, { method: "DELETE" });
-}
-
-// ── Todos ─────────────────────────────────────────────────────────────────────
-export interface Todo {
-  id: string;
-  userId: string;
-  content: string;
-  completed: boolean;
-  reminded10h: boolean;
-  reminded15h: boolean;
-  reminded22h: boolean;
-  createdAt: string;
-  hoursElapsed: number;
-  hoursUntilExpiry: number;
-}
-
-export async function getTodos(userId = USER_ID, includeCompleted = false): Promise<Todo[]> {
-  return apiFetch(`/notes-todos/todos?user_id=${userId}&include_completed=${includeCompleted}`);
-}
-
-export async function createTodo(content: string, userId = USER_ID): Promise<Todo> {
-  return apiFetch("/notes-todos/todos", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, content }),
-  });
-}
-
-export async function completeTodo(todoId: string): Promise<Todo> {
-  return apiFetch(`/notes-todos/todos/${todoId}/complete`, { method: "POST" });
-}
-
-export async function deleteTodo(todoId: string) {
-  return apiFetch(`/notes-todos/todos/${todoId}`, { method: "DELETE" });
-}
-
-// ── Notebooks ─────────────────────────────────────────────────────────────────
-export interface Notebook {
-  id: string;
-  userId: string;
-  name: string;
-  description: string | null;
-  emoji: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { notes: number };
-  notes?: Note[];
-}
-
-export async function getNotebooks(userId = USER_ID): Promise<Notebook[]> {
-  return apiFetch(`/notes-todos/notebooks?user_id=${userId}`);
-}
-
-export async function getNotebook(notebookId: string): Promise<Notebook> {
-  return apiFetch(`/notes-todos/notebooks/${notebookId}`);
-}
-
-export async function createNotebook(data: { name: string; emoji?: string; description?: string }, userId = USER_ID): Promise<Notebook> {
-  return apiFetch("/notes-todos/notebooks", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, ...data }),
-  });
-}
-
-export async function updateNotebook(notebookId: string, data: { name?: string; emoji?: string; description?: string }): Promise<Notebook> {
-  return apiFetch(`/notes-todos/notebooks/${notebookId}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteNotebook(notebookId: string) {
-  return apiFetch(`/notes-todos/notebooks/${notebookId}`, { method: "DELETE" });
 }

@@ -1,94 +1,59 @@
-import { prisma } from "../db/prisma";
+import axios from "axios";
+import { config } from "../config";
 
-// ── Notebooks ─────────────────────────────────────────────────────────────────
-
-export async function createNotebook(userId: string, name: string, description?: string, emoji = "📓") {
-  return prisma.notebook.create({ data: { userId, name, description, emoji } });
-}
-
-export async function getNotebooks(userId: string) {
-  return prisma.notebook.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    include: { _count: { select: { notes: true } } },
-  });
-}
-
-export async function getNotebook(notebookId: string) {
-  return prisma.notebook.findUnique({
-    where: { id: notebookId },
-    include: { notes: { orderBy: { createdAt: "desc" } } },
-  });
-}
-
-export async function updateNotebook(notebookId: string, data: { name?: string; description?: string; emoji?: string }) {
-  return prisma.notebook.update({ where: { id: notebookId }, data });
-}
-
-export async function deleteNotebook(notebookId: string) {
-  // Cascades to notes via schema relation
-  return prisma.notebook.delete({ where: { id: notebookId } });
-}
-
-/** Ensures every user has at least a "General" notebook. Returns its id. */
-export async function ensureDefaultNotebook(userId: string): Promise<string> {
-  const existing = await prisma.notebook.findFirst({
-    where: { userId, name: "General" },
-  });
-  if (existing) return existing.id;
-  const created = await prisma.notebook.create({
-    data: { userId, name: "General", emoji: "📓" },
-  });
-  return created.id;
-}
+const api = axios.create({ baseURL: config.pythonApiUrl });
 
 // ── Notes ─────────────────────────────────────────────────────────────────────
 
-export async function createNote(userId: string, content: string, notebookId: string) {
-  return prisma.note.create({ data: { userId, notebookId, content } });
+export async function getNotes(userId: string) {
+  const { data } = await api.get("/notes-todos/notes", { params: { user_id: userId } });
+  return data;
 }
 
-export async function getNotes(userId: string, notebookId?: string) {
-  return prisma.note.findMany({
-    where: notebookId ? { userId, notebookId } : { userId },
-    orderBy: { createdAt: "desc" },
-    include: { notebook: { select: { name: true, emoji: true } } },
+export async function createNote(userId: string, content: string, notebookId: string = "default") {
+  const { data } = await api.post("/notes-todos/notes", {
+    user_id: userId,
+    notebook_id: notebookId,
+    content,
+    title: content.slice(0, 60),
   });
-}
-
-export async function getNote(noteId: string) {
-  return prisma.note.findUnique({ where: { id: noteId } });
-}
-
-export async function updateNote(noteId: string, content: string) {
-  return prisma.note.update({ where: { id: noteId }, data: { content } });
+  return data;
 }
 
 export async function deleteNote(noteId: string) {
-  return prisma.note.delete({ where: { id: noteId } });
+  const { data } = await api.delete(`/notes-todos/notes/${noteId}`);
+  return data;
 }
 
 // ── Todos ─────────────────────────────────────────────────────────────────────
 
-export async function createTodo(userId: string, content: string) {
-  return prisma.todo.create({ data: { userId, content } });
+export async function getTodos(userId: string, completed?: boolean) {
+  const params: Record<string, string> = { user_id: userId };
+  if (completed !== undefined) params.completed = String(completed);
+  const { data } = await api.get("/notes-todos/todos", { params });
+  return data;
 }
 
-export async function getTodos(userId: string, includeCompleted = false) {
-  return prisma.todo.findMany({
-    where: includeCompleted ? { userId } : { userId, completed: false },
-    orderBy: { createdAt: "asc" },
+export async function createTodo(userId: string, content: string) {
+  const { data } = await api.post("/notes-todos/todos", {
+    user_id: userId,
+    content,
   });
+  return data;
 }
 
 export async function completeTodo(todoId: string) {
-  return prisma.todo.update({ where: { id: todoId }, data: { completed: true } });
+  const { data } = await api.patch(`/notes-todos/todos/${todoId}/complete`);
+  return data;
 }
 
 export async function deleteTodo(todoId: string) {
-  return prisma.todo.delete({ where: { id: todoId } });
+  const { data } = await api.delete(`/notes-todos/todos/${todoId}`);
+  return data;
 }
 
-export function hoursElapsed(createdAt: Date): number {
-  return (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+export function hoursElapsed(from: Date): number {
+  return (Date.now() - from.getTime()) / 3_600_000;
 }

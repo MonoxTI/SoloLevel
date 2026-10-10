@@ -70,22 +70,6 @@ export async function completeDailyGoal(userId: string, goalKey: string) {
   return data;
 }
 
-export async function completeGoalByTitle(userId: string, title: string) {
-  const goals = await getGoals(userId, false);
-  const target = title.trim();
-  const match = target
-    ? goals.find((goal: any) =>
-        goal.title.toLowerCase() === target.toLowerCase() ||
-        goal.title.toLowerCase().includes(target.toLowerCase())
-      )
-    : goals[0];
-  if (!match) {
-    throw new Error(`No active goal found matching "${title}"`);
-  }
-  const { data } = await api.post(`/goals/${match.id}/complete`);
-  return { ...data, title: match.title, xp_reward: match.xp_reward };
-}
-
 // ── Net Worth ─────────────────────────────────────────────────────────────────
 export async function setNetWorth(params: {
   userId: string; baseValue: number; yearlyBudgetGoal?: number;
@@ -115,5 +99,41 @@ export async function getTradingSignal(symbol?: string) {
 
 export async function getPortfolio(userId: string) {
   const { data } = await api.get(`/finance/trades/${userId}`);
+  return data;
+}
+
+export async function completeGoalByTitle(userId: string, titleOrLatest: string) {
+  // Fetch active goals, find matching one (or most recent), then complete it
+  const goals = await getGoals(userId, false);
+  if (!goals.length) throw new Error("No active goals");
+
+  let target: any;
+  if (titleOrLatest === "latest" || !titleOrLatest) {
+    target = goals[goals.length - 1];
+  } else {
+    target = goals.find((g: any) =>
+      g.title.toLowerCase().includes(titleOrLatest.toLowerCase())
+    ) ?? goals[goals.length - 1];
+  }
+
+  const { data } = await api.post(`/goals/${target.id}/complete`);
+  return data;
+}
+
+// ── Notebooks & Notes ─────────────────────────────────────────────────────────
+export async function getNotebooks(userId: string) {
+  const { data } = await api.get("/notes-todos/notebooks", { params: { user_id: userId } });
+  return data;
+}
+
+export async function createNote(params: {
+  userId: string; notebookId: string; content: string; title?: string;
+}) {
+  const { data } = await api.post("/notes-todos/notes", {
+    user_id: params.userId,
+    notebook_id: params.notebookId,
+    content: params.content,
+    title: params.title ?? params.content.slice(0, 60),
+  });
   return data;
 }

@@ -172,7 +172,7 @@ export function parseMessage(text: string): ParsedMessage {
     if (key) return { intent: "DAILY_COMPLETE", dailyGoalKey: key, replyText: "" };
   }
 
-  // ── Claim goal XP — "goal achieved", "claim xp", "done goal save for rent" ─
+  // ── Claim goal XP ─────────────────────────────────────────────────────────
   const claimGoalMatch = raw.match(/^(?:goal achieved|goal done|claim xp|claim goal xp|complete goal|done goal|finished goal|achieved goal)\s*(.*)$/i);
   if (claimGoalMatch) {
     const goalName = (claimGoalMatch[1] || "").trim();
