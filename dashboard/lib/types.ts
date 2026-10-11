@@ -128,6 +128,7 @@ export interface Notebook {
   user_id: string;
   name: string;
   description: string | null;
+  emoji: string | null;
   created_at: string;
   updated_at: string;
 }

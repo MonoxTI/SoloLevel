@@ -132,11 +132,11 @@ export async function getNotebooks(userId = USER_ID): Promise<Notebook[]> {
 }
 
 export async function createNotebook(body: {
-  name: string; description?: string; userId?: string;
+  name: string; description?: string; emoji?: string; userId?: string;
 }): Promise<Notebook> {
   return apiFetch("/notes-todos/notebooks", {
     method: "POST",
-    body: JSON.stringify({ user_id: body.userId ?? USER_ID, name: body.name, description: body.description ?? null }),
+    body: JSON.stringify({ user_id: body.userId ?? USER_ID, name: body.name, description: body.description ?? null, emoji: body.emoji ?? null }),
   });
 }
 
