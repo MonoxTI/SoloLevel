@@ -141,7 +141,7 @@ export async function createNotebook(body: {
 }
 
 export async function updateNotebook(notebookId: string, body: {
-  name?: string; description?: string;
+  name?: string; description?: string; emoji?: string;
 }): Promise<Notebook> {
   return apiFetch(`/notes-todos/notebooks/${notebookId}`, {
     method: "PATCH",
@@ -160,26 +160,24 @@ export async function getNotes(userId = USER_ID, notebookId?: string): Promise<N
   return apiFetch(`/notes-todos/notes?${params}`);
 }
 
-export async function createNote(body: {
-  notebookId: string; content: string; title?: string; userId?: string;
-}): Promise<Note> {
+// Called as: createNote(content, title, notebookId)
+export async function createNote(content: string, title?: string, notebookId?: string, userId = USER_ID): Promise<Note> {
   return apiFetch("/notes-todos/notes", {
     method: "POST",
     body: JSON.stringify({
-      user_id: body.userId ?? USER_ID,
-      notebook_id: body.notebookId,
-      content: body.content,
-      title: body.title ?? body.content.slice(0, 60),
+      user_id: userId,
+      notebook_id: notebookId ?? "default",
+      content,
+      title: title ?? content.slice(0, 60),
     }),
   });
 }
 
-export async function updateNote(noteId: string, body: {
-  title?: string; content?: string;
-}): Promise<Note> {
+// Called as: updateNote(noteId, content)
+export async function updateNote(noteId: string, content: string): Promise<Note> {
   return apiFetch(`/notes-todos/notes/${noteId}`, {
     method: "PATCH",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ content, title: content.slice(0, 60) }),
   });
 }
 

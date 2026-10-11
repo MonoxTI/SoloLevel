@@ -128,9 +128,10 @@ export interface Notebook {
   user_id: string;
   name: string;
   description: string | null;
-  emoji: string | null;
+  emoji: string;
   created_at: string;
   updated_at: string;
+  _count?: { notes: number };
 }
 
 export interface Note {
@@ -139,8 +140,11 @@ export interface Note {
   user_id: string;
   title: string;
   content: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
+  // snake_case aliases from API
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
