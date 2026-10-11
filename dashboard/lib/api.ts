@@ -1,10 +1,10 @@
 import type {
   Goal, GoalType, Difficulty, Transaction, SpendingSummary,
-  User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
+  User, NetWorth, DailyStatus, DailyGoal, PortfolioSummary, TradingSignal,
   Notebook, Note,
 } from "./types";
 
-export type { Notebook, Note };
+export type { Notebook, Note, DailyGoal };
 
 const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
@@ -96,9 +96,9 @@ export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
 }
 
 // Called as: createDailyGoal(title) — generates a key from the title
-export async function createDailyGoal(title: string, userId = USER_ID) {
+export async function createDailyGoal(title: string, userId = USER_ID): Promise<DailyGoal> {
   const key = "custom_" + title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-  return apiFetch("/daily-goals/", {
+  return apiFetch<DailyGoal>("/daily-goals/", {
     method: "POST",
     body: JSON.stringify({ user_id: userId, key, label: title }),
   });
