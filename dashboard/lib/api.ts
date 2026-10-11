@@ -1,6 +1,7 @@
 import type {
   Goal, GoalType, Difficulty, Transaction, SpendingSummary,
   User, NetWorth, DailyStatus, PortfolioSummary, TradingSignal,
+  Notebook, Note,
 } from "./types";
 
 const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
@@ -121,4 +122,65 @@ export async function getTradingSignals(): Promise<TradingSignal[]> {
 
 export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
   return apiFetch(`/trading/signal/${symbol}`);
+}
+
+// ── Notebooks ─────────────────────────────────────────────────────────────────
+export async function getNotebooks(userId = USER_ID): Promise<Notebook[]> {
+  return apiFetch(`/notes-todos/notebooks?user_id=${userId}`);
+}
+
+export async function createNotebook(body: {
+  name: string; description?: string; userId?: string;
+}): Promise<Notebook> {
+  return apiFetch("/notes-todos/notebooks", {
+    method: "POST",
+    body: JSON.stringify({ user_id: body.userId ?? USER_ID, name: body.name, description: body.description ?? null }),
+  });
+}
+
+export async function updateNotebook(notebookId: string, body: {
+  name?: string; description?: string;
+}): Promise<Notebook> {
+  return apiFetch(`/notes-todos/notebooks/${notebookId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteNotebook(notebookId: string) {
+  return apiFetch(`/notes-todos/notebooks/${notebookId}`, { method: "DELETE" });
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+export async function getNotes(userId = USER_ID, notebookId?: string): Promise<Note[]> {
+  const params = new URLSearchParams({ user_id: userId });
+  if (notebookId) params.set("notebook_id", notebookId);
+  return apiFetch(`/notes-todos/notes?${params}`);
+}
+
+export async function createNote(body: {
+  notebookId: string; content: string; title?: string; userId?: string;
+}): Promise<Note> {
+  return apiFetch("/notes-todos/notes", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: body.userId ?? USER_ID,
+      notebook_id: body.notebookId,
+      content: body.content,
+      title: body.title ?? body.content.slice(0, 60),
+    }),
+  });
+}
+
+export async function updateNote(noteId: string, body: {
+  title?: string; content?: string;
+}): Promise<Note> {
+  return apiFetch(`/notes-todos/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteNote(noteId: string) {
+  return apiFetch(`/notes-todos/notes/${noteId}`, { method: "DELETE" });
 }

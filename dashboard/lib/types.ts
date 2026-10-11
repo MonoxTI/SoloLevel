@@ -62,7 +62,6 @@ export interface DailyGoal {
   xp_gain: number;
   xp_loss: number;
   completed: boolean;
-  skipped?: boolean;
   log_id: string | null;
 }
 
@@ -70,7 +69,6 @@ export interface DailyStatus {
   date: string;
   goals: DailyGoal[];
   total_xp_today: number;
-  break_active?: boolean;
 }
 
 export interface PortfolioTrade {
@@ -124,6 +122,25 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
 export const DIFFICULTY_XP: Record<Difficulty, number> = {
   EASY: 50, MEDIUM: 150, HARD: 300,
 };
+
+export interface Notebook {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Note {
+  id: string;
+  notebook_id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export const CATEGORY_COLORS: Record<string, string> = {
   Groceries: "#00e5ff", Transport: "#00ff88", "Dining Out": "#ffb300",
