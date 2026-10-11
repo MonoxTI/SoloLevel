@@ -95,12 +95,12 @@ export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}/complete?user_id=${userId}`, { method: "POST" });
 }
 
-export async function createDailyGoal(body: {
-  key: string; label: string; xp?: number; userId?: string;
-}) {
+// Called as: createDailyGoal(title) — generates a key from the title
+export async function createDailyGoal(title: string, userId = USER_ID) {
+  const key = "custom_" + title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
   return apiFetch("/daily-goals/", {
     method: "POST",
-    body: JSON.stringify({ user_id: body.userId ?? USER_ID, ...body }),
+    body: JSON.stringify({ user_id: userId, key, label: title }),
   });
 }
 
@@ -108,7 +108,7 @@ export async function deleteDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}?user_id=${userId}`, { method: "DELETE" });
 }
 
-export async function skipDailyGoals(userId = USER_ID) {
+export async function skipDailyGoals(userId = USER_ID): Promise<{ break_active: boolean }> {
   return apiFetch(`/daily-goals/skip?user_id=${userId}`, { method: "POST" });
 }
 
