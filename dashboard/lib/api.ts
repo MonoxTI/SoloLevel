@@ -4,6 +4,8 @@ import type {
   Notebook, Note,
 } from "./types";
 
+export type { Notebook, Note };
+
 const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
 
