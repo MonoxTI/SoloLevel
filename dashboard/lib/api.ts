@@ -1,10 +1,10 @@
 import type {
   Goal, GoalType, Difficulty, Transaction, SpendingSummary,
   User, NetWorth, DailyStatus, DailyGoal, PortfolioSummary, TradingSignal,
-  Notebook, Note,
+  Notebook, Note, Todo,
 } from "./types";
 
-export type { Notebook, Note, DailyGoal };
+export type { Notebook, Note, DailyGoal, Todo };
 
 const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
@@ -124,6 +124,19 @@ export async function getTradingSignals(): Promise<TradingSignal[]> {
 
 export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
   return apiFetch(`/trading/signal/${symbol}`);
+}
+
+// ── Todos ─────────────────────────────────────────────────────────────────────
+export async function getTodos(userId = USER_ID, completed = false): Promise<Todo[]> {
+  return apiFetch<Todo[]>(`/notes-todos/todos?user_id=${userId}&completed=${completed}`);
+}
+
+export async function completeTodo(todoId: string): Promise<Todo> {
+  return apiFetch<Todo>(`/notes-todos/todos/${todoId}/complete`, { method: "PATCH" });
+}
+
+export async function deleteTodo(todoId: string) {
+  return apiFetch(`/notes-todos/todos/${todoId}`, { method: "DELETE" });
 }
 
 // ── Notebooks ─────────────────────────────────────────────────────────────────

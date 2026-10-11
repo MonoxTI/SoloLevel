@@ -124,6 +124,15 @@ export const DIFFICULTY_XP: Record<Difficulty, number> = {
   EASY: 50, MEDIUM: 150, HARD: 300,
 };
 
+export interface Todo {
+  id: string;
+  user_id: string;
+  content: string;
+  completed: boolean;
+  hoursUntilExpiry: number;
+  created_at: string;
+}
+
 export interface Notebook {
   id: string;
   user_id: string;
