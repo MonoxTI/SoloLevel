@@ -1,10 +1,10 @@
 import type {
   Goal, GoalType, Difficulty, Transaction, SpendingSummary,
   User, NetWorth, DailyStatus, DailyGoal, PortfolioSummary, TradingSignal,
-  Notebook, Note, Todo,
+  Notebook, Note, Todo, Insight,
 } from "./types";
 
-export type { Notebook, Note, DailyGoal, Todo };
+export type { Notebook, Note, DailyGoal, Todo, Insight };
 
 const BASE = process.env.PYTHON_API_URL ?? "http://192.168.10.148:8000";
 const USER_ID = process.env.NEXT_PUBLIC_DEFAULT_USER_ID ?? "";
@@ -95,7 +95,6 @@ export async function completeDailyGoal(goalKey: string, userId = USER_ID) {
   return apiFetch(`/daily-goals/${goalKey}/complete?user_id=${userId}`, { method: "POST" });
 }
 
-// Called as: createDailyGoal(title) — generates a key from the title
 export async function createDailyGoal(title: string, userId = USER_ID): Promise<DailyGoal> {
   const key = "custom_" + title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
   return apiFetch<DailyGoal>("/daily-goals/", {
@@ -124,6 +123,16 @@ export async function getTradingSignals(): Promise<TradingSignal[]> {
 
 export async function getSignalForSymbol(symbol: string): Promise<TradingSignal> {
   return apiFetch(`/trading/signal/${symbol}`);
+}
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+export async function getInsights(userId = USER_ID, unreadOnly = false): Promise<Insight[]> {
+  const params = new URLSearchParams({ unread_only: String(unreadOnly) });
+  return apiFetch<Insight[]>(`/insights/${userId}?${params}`);
+}
+
+export async function markInsightRead(insightId: string): Promise<{ read: boolean }> {
+  return apiFetch(`/insights/${insightId}/read`, { method: "PATCH" });
 }
 
 // ── Todos ─────────────────────────────────────────────────────────────────────
@@ -173,7 +182,6 @@ export async function getNotes(userId = USER_ID, notebookId?: string): Promise<N
   return apiFetch(`/notes-todos/notes?${params}`);
 }
 
-// Called as: createNote(content, title, notebookId)
 export async function createNote(content: string, title?: string, notebookId?: string, userId = USER_ID): Promise<Note> {
   return apiFetch("/notes-todos/notes", {
     method: "POST",
@@ -186,7 +194,6 @@ export async function createNote(content: string, title?: string, notebookId?: s
   });
 }
 
-// Called as: updateNote(noteId, content)
 export async function updateNote(noteId: string, content: string): Promise<Note> {
   return apiFetch(`/notes-todos/notes/${noteId}`, {
     method: "PATCH",

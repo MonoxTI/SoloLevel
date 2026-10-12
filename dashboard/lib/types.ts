@@ -109,6 +109,19 @@ export interface TradingSignal {
   error: string | null;
 }
 
+export interface Insight {
+  id: string;
+  type: string;
+  severity: string;
+  category: string | null;
+  title: string;
+  body: string;
+  value: number | null;
+  confidence: number | null;
+  read: boolean;
+  generated_at: string;
+}
+
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   SAVINGS: "Savings", SPENDING_LIMIT: "Spend Limit",
   NET_WORTH: "Net Worth", TRADE_TARGET: "Trade Target", CUSTOM: "Custom",
@@ -152,7 +165,6 @@ export interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
-  // snake_case aliases from API
   created_at?: string;
   updated_at?: string;
 }
