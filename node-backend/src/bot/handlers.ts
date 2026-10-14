@@ -9,6 +9,7 @@ import {
 import {
   createNote, getNotes,
   createTodo, getTodos, completeTodo, hoursElapsed,
+  ensureDefaultNotebook,
 } from "../services/notesAndTodos";
 import { awardXP, buildXPMessage } from "../services/gamification";
 import { config } from "../config";
@@ -290,7 +291,8 @@ async function handleAddNote(ctx: Context, parsed: ParsedMessage) {
     return;
   }
   try {
-    await createNote(userId, parsed.noteContent, "default");
+    const notebookId = await ensureDefaultNotebook(userId);
+    await createNote(userId, parsed.noteContent, notebookId);
     await ctx.reply(`📝 Noted: "${parsed.noteContent}"\n\nView all your notes anytime on the dashboard.`, { parse_mode: "Markdown" });
   } catch (err: any) {
     console.error("[HANDLER] addNote error:", err?.message);
